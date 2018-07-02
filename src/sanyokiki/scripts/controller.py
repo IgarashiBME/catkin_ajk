@@ -17,18 +17,18 @@ StartByte_1 = "S"
 StartByte_2 = "T"
 ForwardBackward_Neutral = 512 # neutral value
 LeftRight_Neutral = 512       # neutral value
-EngineSpeed = "0A49"          # minimam speed
+EngineSpeed = "0E0E"          # minimam speed is 0A49
 EngineOn = "0000"             # engine off value, engine on value is "0080"
 AutonomousOff = "0000"
-MaxSpeed_Limit = "0041"
+MaxSpeed_Limit = "0050"
 CorrectionDataA = "0000"
 CorrectionDataB = "0000"
 LineFeed = chr(0x0d)
 CarriageReturn = chr(0x0a)
 CommandLength = 36            # command of sanyokiki weeder is 36 length.
 
-PowerAdjust = 320
-DiagonalAdjust = 160
+PowerAdjust = 400
+DiagonalAdjust = 110
 SleepConstant = 0.060 # second
 
 
