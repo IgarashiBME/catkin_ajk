@@ -1,10 +1,12 @@
 ﻿# AJK　草刈り機のROSパッケージ  
   
 ## 必要な機器  
-twelite  
-Bosch BNO055(IMU)  
-Ublox C94-M8P  
+twelite（無線モジュール）  
+Bosch BNO055（IMU）  
+Ublox C94-M8P（GNSSモジュール）  
   
+
+
 ## 草刈り機への通信  
 草刈り機への通信はtweliteを使う。  
 
@@ -23,11 +25,18 @@ rosrun sanyokiki key.py
   
 w,a,s,dなどのキー入力により草刈り機を操作できます。  
   
-## GNSSの利用
-下記のコマンドを実行  
+
+
+## GNSSの利用  
+C94-M8Pを接続し、下記のコマンドを実行する。  
 rosrun ubx_analyzer navpvt.py  
   
-UBX-NAV-PVTのプロトコルを読み込み、
-/utm　(UTM座標)、/gnss (緯度経度)、/gpstime (GPSタイム) の
-メッセージを配信するプログラムです。
+navpvt.pyによってUBX-NAV-PVTのプロトコルが読みこまれ、
+/utm　(UTM座標)、/gnss (緯度経度)、/gpstime (GPSタイム) の  
+メッセージが配信されます。
   
+
+
+## IMUの利用  
+BNO055を接続し、下記のコマンドを実行する。  
+roslaunch imu_jetson.launch
