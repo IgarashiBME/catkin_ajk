@@ -1,0 +1,12 @@
+<launch>
+
+  <!-- GNSS yaw -->
+  <node pkg="gnss_yaw" type="gnss_yaw.py" name="gnss_yaw_node" output="screen">
+  </node>
+
+  <!-- GNSS imu fusion yaw -->
+  <node pkg="gnss_yaw" type="gnss_imu.py" name="gnss_imu_node" output="screen">
+  </node>
+</launch>
+
+
