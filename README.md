@@ -14,9 +14,7 @@ ROSのテキストを参考にして、catkin_makeをすること。
 
 
 ## 草刈り機への通信  
-草刈り機への通信はtweliteを使う。  
-
-下記のコマンドを実行  
+tweliteを接続し下記のコマンドを実行する。  
 roslaunch sanyokiki ajk.launch  
   
 ターミナル内で" o "を入力し、エンターキーを押すとエンジン始動。  
@@ -45,4 +43,31 @@ navpvt.pyによってUBX-NAV-PVTのプロトコルが読みこまれ、
 
 ## IMUの利用  
 BNO055を接続し、下記のコマンドを実行する。  
-roslaunch imu_jetson.launch
+roslaunch imu_jetson.launch  
+  
+
+
+## GNSSの絶対座標による機体角の取得（やや不安定）  
+下記のコマンドを実行する。  
+roslaunch gnss_yaw gnss.launch  
+  
+そして機体をまっすぐ前進させる。
+上手くいけば、/gnss_yawというUTM座標の変化から求められた
+機体角のメッセージが配信される（直進性が低いと配信されない）。
+
+IMUとGNSSが正常であれば、  
+UTM座標と機体角が統合された/gnss_imuメッセージが配信される。  
+  
+
+
+## 自律走行とウェイポイント  
+上記の項目を全て実行した後、下記のコマンドを実行する。  
+rosrun pid_navi route_write.py  
+  
+任意の場所に草刈り機を移動し、ターミナル内の指示に従って、  
+ウェイポイントを登録する。  
+route.csvが保存されたらスタート位置に移動し、下記のコマンドを実行する。  
+rosrun pid_navi mower_rtrip.py  
+
+自律走行が開始されるはずである。  
+
