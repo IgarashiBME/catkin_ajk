@@ -35,7 +35,7 @@ w,a,s,dなどのキー入力により草刈り機を操作できます。
 C94-M8Pを接続し、下記のコマンドを実行する。  
 rosrun ubx_analyzer navpvt.py  
   
-navpvt.pyによってUBX-NAV-PVTのプロトコルが読みこまれ、
+navpvt.pyによってUBX-NAV-PVTのプロトコルが読みこまれ、  
 /utm　(UTM座標)、/gnss (緯度経度)、/gpstime (GPSタイム) の  
 メッセージが配信されます。
   
@@ -55,8 +55,7 @@ roslaunch gnss_yaw gnss.launch
 上手くいけば、/gnss_yawというUTM座標の変化から求められた
 機体角のメッセージが配信される（直進性が低いと配信されない）。
 
-IMUとGNSSが正常であれば、  
-UTM座標と機体角が統合された/gnss_imuメッセージが配信される。  
+IMUとGNSSが正常であれば、UTM座標と機体角が統合された/gnss_imuメッセージが配信される。  
   
 
 
