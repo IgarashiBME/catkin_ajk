@@ -1,5 +1,10 @@
 ﻿# AJK　草刈り機のROSパッケージ  
+
+## 必要環境  
+Robot Operating Systemのインストール
   
+
+
 ## 必要な機器  
 twelite（無線モジュール）  
 Bosch BNO055（IMU）  
