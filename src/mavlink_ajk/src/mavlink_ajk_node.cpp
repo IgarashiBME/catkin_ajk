@@ -27,6 +27,9 @@ public:
     void gnss_callback(const geometry_msgs::Twist::ConstPtr& msg);
     float lat = 0.0;
     float lon = 0.0;
+    float alt = 0.0;
+    int fix_type = 0;
+    int satellites = 255; // number of satellites visible. If unknown, set to 255.
 };
 
 void Listener::gnss_callback(const geometry_msgs::Twist::ConstPtr& msg){

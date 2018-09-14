@@ -10,6 +10,8 @@ from pyproj import Proj
 from sensor_msgs.msg import NavSatFix    # ROS message form
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
+from ubx_analyzer.msg import NavPVT 
+
 
 Header_A = "b5"  #Ublox GNSS receiver, UBX protocol header
 Header_B = "62"  #Ublox GNSS receiver, UBX protocol header
@@ -19,7 +21,7 @@ NAV_PVT_Length = 96    #length of UBX-NAV-PVT hex data
 
 # Set up serial:
 ser = serial.Serial(
-    port='/dev/serial/by-path/platform-tegra-xhci-usb-0:3.1:1.0',\
+    port='/dev/serial/by-id/usb-u-blox_AG_-_www.u-blox.com_u-blox_GNSS_receiver-if00',\
     baudrate=38400,\
     parity=serial.PARITY_NONE,\
     stopbits=serial.STOPBITS_ONE,\
@@ -34,8 +36,10 @@ def ubx():
     pub_ubx = rospy.Publisher("gnss", NavSatFix, queue_size = 1)
     pub_gpst = rospy.Publisher('gpstime', String, queue_size = 1)
     pub_utm = rospy.Publisher('utm', Odometry, queue_size = 1)
+    pub_navpvt = rospy.Publisher('navpvt', NavPVT, queue_size = 1)
     utm = Odometry()
     ubx_data = NavSatFix()
+    navpvt_data = NavPVT()
 
     # searching for UBX-NAV-PVT headers
     while not rospy.is_shutdown():
@@ -55,17 +59,17 @@ def ubx():
                         NAV_PVT_Data = bytearray(ser.read(NAV_PVT_Length))
 
         if NAV_PVT_Data.__len__() == 96:
-            # GNSS Time data
-            gpst = float(struct.unpack('I', struct.pack('BBBB', NAV_PVT_Data[2], NAV_PVT_Data[3], NAV_PVT_Data[4], NAV_PVT_Data[5]))[0])
+            # decode Time data
+            gpst = float(struct.unpack('I', struct.pack('BBBB', NAV_PVT_Data[2], NAV_PVT_Data[3],
+                                       NAV_PVT_Data[4], NAV_PVT_Data[5]))[0])
             year = int(struct.unpack('h', struct.pack('BB', NAV_PVT_Data[6], NAV_PVT_Data[7]))[0])
             month = int(struct.unpack('B', struct.pack('B', NAV_PVT_Data[8]))[0])
             day = int(struct.unpack('B', struct.pack('B', NAV_PVT_Data[9]))[0])
             hour = int(struct.unpack('B', struct.pack('B', NAV_PVT_Data[10]))[0])
             minute = int(struct.unpack('B', struct.pack('B', NAV_PVT_Data[11]))[0])
             second = int(struct.unpack('B', struct.pack('B', NAV_PVT_Data[12]))[0])
-            time_data = str(year) + "," + str(month) + "," + str(day) + "," + str(hour) + "," + str(minute) + "," + str(second)
-
-            # RTK fix flag
+            
+            # decode RTK fix flag
             fix_flag = int(struct.unpack('B', struct.pack('B', NAV_PVT_Data[23]))[0])
             fix_flag = bin(fix_flag)[2:].zfill(8)
             if fix_flag[0:2] == str(10):
@@ -75,24 +79,31 @@ def ubx():
                 fix_status= 0
                 fix_str = "float"
 
-            # Coordinate data
-            longitude = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[26], NAV_PVT_Data[27], NAV_PVT_Data[28], NAV_PVT_Data[29]))[0])/10000000.0
-            latitude = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[30], NAV_PVT_Data[31], NAV_PVT_Data[32], NAV_PVT_Data[33]))[0])/10000000.0
-            height = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[34], NAV_PVT_Data[35], NAV_PVT_Data[36], NAV_PVT_Data[37]))[0])/1000.0
-            coordinate_data = str(latitude) + "," + str(longitude) + "," + str(height)
+            # decode Number of satellites used in Nav Solution
+            satellites = int(struct.unpack('B', struct.pack('B', NAV_PVT_Data[25]))[0])
+
+            # decode Coordinate data
+            longitude = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[26],
+                                            NAV_PVT_Data[27], NAV_PVT_Data[28], NAV_PVT_Data[29]))[0])/10000000.0
+            latitude = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[30], 
+                                            NAV_PVT_Data[31], NAV_PVT_Data[32], NAV_PVT_Data[33]))[0])/10000000.0
+            height = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[34], NAV_PVT_Data[35], 
+                                         NAV_PVT_Data[36], NAV_PVT_Data[37]))[0])/1000.0
 
             # publish GNSS positioning data
             ubx_data.header.stamp = rospy.Time.now()
-            #ubx_data.header.stamp.secs = gpst
             ubx_data.latitude = latitude
             ubx_data.longitude = longitude
             ubx_data.altitude = height
             ubx_data.status.status = fix_status
             pub_ubx.publish(ubx_data)
+
+            # publish rostime and gpstime
             pub_gpst.publish(str(ubx_data.header.stamp.secs) +"," +str(gpst))
 
-            # publish UTM
-            convertor = Proj(proj='utm', zone=54, ellps='WGS84')
+            # publish UTM coordinate
+            utmzone = int((longitude + 180)/6) +1   # If you are on the specific location, can't be calculated. 
+            convertor = Proj(proj='utm', zone=utmzone, ellps='WGS84')
             x, y = convertor(longitude, latitude)
             utm.header.stamp = rospy.Time.now()
             utm.pose.pose.position.x = x
@@ -100,8 +111,25 @@ def ubx():
             utm.pose.pose.position.z = height
             pub_utm.publish(utm)
 
+            # publish GNSS status
+            navpvt_data.iTOW = gpst
+            navpvt_data.year = year
+            navpvt_data.month = month
+            navpvt_data.day = day
+            navpvt_data.hour = hour
+            navpvt_data.min = minute
+            navpvt_data.sec = second
+            navpvt_data.numSV = satellites
+            navpvt_data.lon = longitude
+            navpvt_data.lat = latitude
+            navpvt_data.height = height
+            pub_navpvt.publish(navpvt_data)            
+
             # print section
             #print gpst
+            time_data = str(year) + "," + str(month) + "," + str(day) + "," + str(hour) \
+                        + "," + str(minute) + "," + str(second)
+            coordinate_data = str(latitude) + "," + str(longitude) + "," + str(height)
             print time_data
             print fix_str, fix_status, fix_flag[0:2]
             print coordinate_data
