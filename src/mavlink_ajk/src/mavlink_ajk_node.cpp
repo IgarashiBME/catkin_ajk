@@ -1,3 +1,4 @@
+/* C++ standard library */
 #include "stdio.h"
 #include "errno.h"
 #include "string.h"
@@ -11,11 +12,14 @@
 #include "sys/time.h"
 #include "arpa/inet.h"
 
-// ROS include
+/* ROS library */
 #include "ros/ros.h"
-#include <geometry_msgs/Twist.h>
+#include "geometry_msgs/Twist.h"
 
-// mavlink include
+/* ublox NavPVT custom ROS message */
+#include "mavlink_ajk/NavPVT.h"
+
+/* mavlink library */
 #include "mavlink.h"
 
 #define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
@@ -24,9 +28,9 @@ uint64_t microsSinceEpoch();
 
 class Listener{
 public:
-    void gnss_callback(const geometry_msgs::Twist::ConstPtr& msg);
+    void gnss_callback(const mavlink_ajk::NavPVT::ConstPtr& msg);
     /* sanyokiki lat 34.85586  lon 133.1018045
-       yayoi     lat 35.716761 lon 139.761254 */
+       yayoi     lat 35.716761 lon 139.761254  */
     int lat = 35.716761 * 10000000;
     int lon = 139.761254 * 10000000;
     int alt = 10000;
@@ -34,8 +38,8 @@ public:
     int satellites = 8; // number of satellites visible. If unknown, set to 255.
 };
 
-void Listener::gnss_callback(const geometry_msgs::Twist::ConstPtr& msg){
-    lat = msg->linear.x;
+void Listener::gnss_callback(const mavlink_ajk::NavPVT::ConstPtr& msg){
+    lat = msg->lat;
 }
 
 int main(int argc, char **argv){
@@ -91,7 +95,6 @@ int main(int argc, char **argv){
     gcAddr.sin_addr.s_addr = inet_addr(target_ip);
     gcAddr.sin_port = htons(14550);
 
-    //for (;;)
     while (ros::ok()){
         ros::spinOnce();
         /*Send Heartbeat */
@@ -102,33 +105,33 @@ int main(int argc, char **argv){
         len = mavlink_msg_to_send_buffer(buf, &mavmsg);
         bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
-        // Send Status
+        /* Send Status */
         mavlink_msg_sys_status_pack(1, 200, &mavmsg, 0, 0, 0, 500, 11000, -1, -1, 0, 0, 0, 0, 0, 0);
         len = mavlink_msg_to_send_buffer(buf, &mavmsg);
         bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof (struct sockaddr_in));
 
-        // Send Local Position
+        /* Send Local Position */
         mavlink_msg_local_position_ned_pack(1, 200, &mavmsg, microsSinceEpoch(), 
                                             position[0], position[1], position[2],
                                             position[3], position[4], position[5]);
         len = mavlink_msg_to_send_buffer(buf, &mavmsg);
         bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
-        // Send attitude 
+        /* Send attitude */ 
         mavlink_msg_attitude_pack(1, 200, &mavmsg, microsSinceEpoch(), 1.2, 1.7, 3.14, 0.01, 0.02, 0.03);
         len = mavlink_msg_to_send_buffer(buf, &mavmsg);
         bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
         memset(buf, 0, BUFFER_LENGTH);
 
-        // Send GPS
+        /* Send GPS */
         mavlink_msg_gps_raw_int_pack(1, 200, &mavmsg, 0, GPS_FIX_TYPE_RTK_FIXED, 
                                      listener.lat, listener.lon, listener.alt, 65535, 65535, 
                                      65535, 65535, listener.satellites);
         len = mavlink_msg_to_send_buffer(buf, &mavmsg);
         bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
  
-        // receiver
+        /* receiver section */
         recsize = recvfrom(sock, (void *)buf, BUFFER_LENGTH, 0, (struct sockaddr *)&gcAddr, &fromlen);
 
         if (recsize > 0){
@@ -159,7 +162,7 @@ int main(int argc, char **argv){
                 printf("\n");
         }
         memset(buf, 0, BUFFER_LENGTH);
-        //ROS_INFO("info [%f]", listener.lat);
+        ROS_INFO("info [%f]", listener.lat);
         sleep(1); // Sleep one second
     }
 }
