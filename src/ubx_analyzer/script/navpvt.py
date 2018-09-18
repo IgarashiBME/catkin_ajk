@@ -26,7 +26,7 @@ ser = serial.Serial(
     parity=serial.PARITY_NONE,\
     stopbits=serial.STOPBITS_ONE,\
     bytesize=serial.EIGHTBITS,\
-        timeout=1)
+    timeout=1)
 
 # Main program loop:
 def ubx():
@@ -73,11 +73,14 @@ def ubx():
             fix_flag = int(struct.unpack('B', struct.pack('B', NAV_PVT_Data[23]))[0])
             fix_flag = bin(fix_flag)[2:].zfill(8)
             if fix_flag[0:2] == str(10):
-                fix_status = 1    # when rtk was fixed, publish 1
-                fix_str = "fixed"
+                fix_status = 2    # when rtk was fixed, publish 2
+                fix_str = "RTK fixed solution"
+            elif fix_flag[0:2] == str(01):
+                fix_status= 1     # when rtk was float, publish 1
+                fix_str = "RTK float solution"
             else:
                 fix_status= 0
-                fix_str = "float"
+                fix_str = "No carrier phase renge solution"
 
             # decode Number of satellites used in Nav Solution
             satellites = int(struct.unpack('B', struct.pack('B', NAV_PVT_Data[25]))[0])
