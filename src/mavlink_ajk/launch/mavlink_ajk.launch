@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="mavlink_ajk" type="mavlink_ajk_node" name="mavlink_ajk" output="screen">
+  </node>
+</launch>
