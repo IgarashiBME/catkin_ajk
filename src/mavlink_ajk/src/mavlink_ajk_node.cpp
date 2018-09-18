@@ -11,6 +11,7 @@
 #include "time.h"
 #include "sys/time.h"
 #include "arpa/inet.h"
+#include "iostream"
 
 /* ROS library */
 #include "ros/ros.h"
@@ -29,17 +30,23 @@ uint64_t microsSinceEpoch();
 class Listener{
 public:
     void gnss_callback(const mavlink_ajk::NavPVT::ConstPtr& msg);
-    /* sanyokiki lat 34.85586  lon 133.1018045
-       yayoi     lat 35.716761 lon 139.761254  */
+    /* sanyokiki lat 34.500682  lon 133.558131
+       yayoi     lat 35.716761  lon 139.761254  */
     int lat = 35.716761 * 10000000;
     int lon = 139.761254 * 10000000;
+    //int lat = 34.500682 * 10000000;
+    //int lon = 133.558131 * 10000000;
     int alt = 10000;
     int fix_type = 0;
-    int satellites = 8; // number of satellites visible. If unknown, set to 255.
+    int satellites = 12; // number of satellites visible. If unknown, set to 255.
 };
 
 void Listener::gnss_callback(const mavlink_ajk::NavPVT::ConstPtr& msg){
-    lat = msg->lat;
+    lat = msg->lat * 10000000; //
+    lon = msg->lon * 10000000;
+    satellites = msg->numSV;
+    
+    //ROS_INFO("info [%f]", msg->lat);
 }
 
 int main(int argc, char **argv){
@@ -48,7 +55,7 @@ int main(int argc, char **argv){
     ros::NodeHandle n;
 
     Listener listener;
-    ros::Subscriber sub = n.subscribe("/cmd_vel", 10, &Listener::gnss_callback, &listener);
+    ros::Subscriber sub = n.subscribe("/navpvt", 10, &Listener::gnss_callback, &listener);
     
     char target_ip[100];
 	
@@ -162,7 +169,8 @@ int main(int argc, char **argv){
                 printf("\n");
         }
         memset(buf, 0, BUFFER_LENGTH);
-        ROS_INFO("info [%f]", listener.lat);
+        //ROS_INFO("info [%i]", listener.lat);
+        //std::cout << listener.lat << std::endl;
         sleep(1); // Sleep one second
     }
 }
