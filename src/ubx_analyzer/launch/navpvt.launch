@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="ubx_analyzer" type="navpvt.py" name="navpvt" output="screen">
+  </node>
+</launch>
