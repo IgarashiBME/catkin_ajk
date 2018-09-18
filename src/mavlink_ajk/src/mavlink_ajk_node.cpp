@@ -25,11 +25,13 @@ uint64_t microsSinceEpoch();
 class Listener{
 public:
     void gnss_callback(const geometry_msgs::Twist::ConstPtr& msg);
-    float lat = 0.0;
-    float lon = 0.0;
-    float alt = 0.0;
+    /* sanyokiki lat 34.85586  lon 133.1018045
+       yayoi     lat 35.716761 lon 139.761254 */
+    int lat = 35.716761 * 10000000;
+    int lon = 139.761254 * 10000000;
+    int alt = 10000;
     int fix_type = 0;
-    int satellites = 255; // number of satellites visible. If unknown, set to 255.
+    int satellites = 8; // number of satellites visible. If unknown, set to 255.
 };
 
 void Listener::gnss_callback(const geometry_msgs::Twist::ConstPtr& msg){
@@ -54,7 +56,7 @@ int main(int argc, char **argv){
     ssize_t recsize;
     socklen_t fromlen;
     int bytes_sent;
-    mavlink_message_t msg;
+    mavlink_message_t mavmsg;
     uint16_t len;
     int i = 0;
     unsigned int temp = 0;
@@ -95,34 +97,43 @@ int main(int argc, char **argv){
         /*Send Heartbeat */
         // https://github.com/mavlink/c_library_v1/blob/3da9db30f3ea7fe8fa8241a74ab343b9971e7e9a/common/common.h#L166
         // Q: Change MANUAL_ARMED Mode
-        mavlink_msg_heartbeat_pack(1, 1, &msg, MAV_TYPE_QUADROTOR, MAV_AUTOPILOT_PX4, 
+        mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_QUADROTOR, MAV_AUTOPILOT_PX4, 
                                    MAV_MODE_GUIDED_ARMED, 3, MAV_STATE_STANDBY);
-        len = mavlink_msg_to_send_buffer(buf, &msg);
+        len = mavlink_msg_to_send_buffer(buf, &mavmsg);
         bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
-        /* Send Status */
-        mavlink_msg_sys_status_pack(1, 200, &msg, 0, 0, 0, 500, 11000, -1, -1, 0, 0, 0, 0, 0, 0);
-        len = mavlink_msg_to_send_buffer(buf, &msg);
+        // Send Status
+        mavlink_msg_sys_status_pack(1, 200, &mavmsg, 0, 0, 0, 500, 11000, -1, -1, 0, 0, 0, 0, 0, 0);
+        len = mavlink_msg_to_send_buffer(buf, &mavmsg);
         bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof (struct sockaddr_in));
 
-        /* Send Local Position */
-        mavlink_msg_local_position_ned_pack(1, 200, &msg, microsSinceEpoch(), 
+        // Send Local Position
+        mavlink_msg_local_position_ned_pack(1, 200, &mavmsg, microsSinceEpoch(), 
                                             position[0], position[1], position[2],
                                             position[3], position[4], position[5]);
-        len = mavlink_msg_to_send_buffer(buf, &msg);
+        len = mavlink_msg_to_send_buffer(buf, &mavmsg);
         bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
-        /* Send attitude */
-        mavlink_msg_attitude_pack(1, 200, &msg, microsSinceEpoch(), 1.2, 1.7, 3.14, 0.01, 0.02, 0.03);
-        len = mavlink_msg_to_send_buffer(buf, &msg);
+        // Send attitude 
+        mavlink_msg_attitude_pack(1, 200, &mavmsg, microsSinceEpoch(), 1.2, 1.7, 3.14, 0.01, 0.02, 0.03);
+        len = mavlink_msg_to_send_buffer(buf, &mavmsg);
         bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
         memset(buf, 0, BUFFER_LENGTH);
+
+        // Send GPS
+        mavlink_msg_gps_raw_int_pack(1, 200, &mavmsg, 0, GPS_FIX_TYPE_RTK_FIXED, 
+                                     listener.lat, listener.lon, listener.alt, 65535, 65535, 
+                                     65535, 65535, listener.satellites);
+        len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+        bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+ 
+        // receiver
         recsize = recvfrom(sock, (void *)buf, BUFFER_LENGTH, 0, (struct sockaddr *)&gcAddr, &fromlen);
 
         if (recsize > 0){
             // Something received - print out all bytes and parse packet
-            mavlink_message_t msg;
+            mavlink_message_t mavmsg;
             mavlink_status_t status;
 
             printf("Bytes Received: %d\nDatagram: ", (int)recsize);
@@ -130,17 +141,17 @@ int main(int argc, char **argv){
             for (i = 0; i < recsize; ++i){
                 temp = buf[i];
                 printf("%02x ", (unsigned char)temp);
-                if (mavlink_parse_char(MAVLINK_COMM_0, buf[i], &msg, &status)){
+                if (mavlink_parse_char(MAVLINK_COMM_0, buf[i], &mavmsg, &status)){
                     // Packet received
                     printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", 
-                           msg.sysid, msg.compid, msg.len, msg.msgid);
+                           mavmsg.sysid, mavmsg.compid, mavmsg.len, mavmsg.msgid);
                 }
             }
-                if (msg.msgid == 44){
+                if (mavmsg.msgid == 44){
                     printf("mission count was received\n");
                     printf("%x \n", (unsigned char)buf[6]);
-                    mavlink_msg_mission_request_int_pack(1, 1, &msg, 255, 0, 0);
-                    len = mavlink_msg_to_send_buffer(buf, &msg);
+                    mavlink_msg_mission_request_int_pack(1, 1, &mavmsg, 255, 0, 0);
+                    len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                     bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                         sizeof (struct sockaddr_in));	
                 }
@@ -148,7 +159,7 @@ int main(int argc, char **argv){
                 printf("\n");
         }
         memset(buf, 0, BUFFER_LENGTH);
-        ROS_INFO("info [%f]", listener.lat);
+        //ROS_INFO("info [%f]", listener.lat);
         sleep(1); // Sleep one second
     }
 }
