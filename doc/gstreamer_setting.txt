@@ -1,0 +1,20 @@
+Installing gstreamer on Ubuntu.
+
+https://gstreamer.freedesktop.org/documentation/installing/on-linux.html
+I referred to the official homepage.
+
+
+sudo apt-get install libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-doc gstreamer1.0-tools
+
+
+gst-launch-1.0 v4l2src device=/dev/video0 \
+! video/x-raw, format=I420, width=320,height=240,framerate=30/1 \
+! x264enc \
+! rtph264pay \
+! udpsink host=192.168.1.101 port=5000
+
+It is a gstreamer command example.
+If you do this command, you can send the camera movie to the other device with udp protocol.
+Attention to the directory of the camera device, e.g. /dev/video0 or /dev/video1 etc...
+Attention to the format.
+
