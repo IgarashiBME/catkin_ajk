@@ -32,11 +32,11 @@ public:
     void gnss_callback(const mavlink_ajk::NavPVT::ConstPtr& msg);
     /* sanyokiki lat 34.500682  lon 133.558131
        yayoi     lat 35.716761  lon 139.761254  */
-    int lat = 35.716761 * 10000000;
-    int lon = 139.761254 * 10000000;
+    int lat = 35.716761 * 10000000;  // latitude
+    int lon = 139.761254 * 10000000;  // longitude
     //int lat = 34.500682 * 10000000;
     //int lon = 133.558131 * 10000000;
-    int alt = 10000;
+    int alt = 10000;  // altitude above elliposid
     int fix_type = 0;
     int satellites = 12; // number of satellites visible. If unknown, set to 255.
 };
@@ -71,6 +71,9 @@ int main(int argc, char **argv){
     uint16_t len;
     int i = 0;
     unsigned int temp = 0;
+    unsigned int mission_total_seq = 0;
+    unsigned int mission_seq = 0;
+    uint64_t pre_time = 0;
 
     // Change the target ip if parameter was given
     strcpy(target_ip, "127.0.0.1");
@@ -102,8 +105,12 @@ int main(int argc, char **argv){
     gcAddr.sin_addr.s_addr = inet_addr(target_ip);
     gcAddr.sin_port = htons(14550);
 
+    pre_time = microsSinceEpoch();
     while (ros::ok()){
         ros::spinOnce();
+        /* time interval */
+        std::cout << microsSinceEpoch() - pre_time << std::endl;
+
         /*Send Heartbeat */
         // https://github.com/mavlink/c_library_v1/blob/3da9db30f3ea7fe8fa8241a74ab343b9971e7e9a/common/common.h#L166
         // Q: Change MANUAL_ARMED Mode
@@ -137,6 +144,13 @@ int main(int argc, char **argv){
                                      65535, 65535, listener.satellites);
         len = mavlink_msg_to_send_buffer(buf, &mavmsg);
         bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+
+        /* Mission Request */
+        //if (mission_total_seq > 0){
+        //    mavlink_msg_mission_request_int_pack(1, 200, &mavmsg, 0, 0, mission_seq);
+        //    len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+        //    bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+        //}
  
         /* receiver section */
         recsize = recvfrom(sock, (void *)buf, BUFFER_LENGTH, 0, (struct sockaddr *)&gcAddr, &fromlen);
@@ -160,17 +174,21 @@ int main(int argc, char **argv){
                 if (mavmsg.msgid == 44){
                     printf("mission count was received\n");
                     printf("%x \n", (unsigned char)buf[6]);
+                    mission_total_seq = buf[6];
                     mavlink_msg_mission_request_int_pack(1, 1, &mavmsg, 255, 0, 0);
                     len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                     bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
-                                        sizeof (struct sockaddr_in));	
+                                        sizeof (struct sockaddr_in));
                 }
 
+                if (mavmsg.msgid == 73){
+                    printf("mission item was received\n");
+                }
                 printf("\n");
         }
         memset(buf, 0, BUFFER_LENGTH);
-        //ROS_INFO("info [%i]", listener.lat);
-        //std::cout << listener.lat << std::endl;
+        
+        pre_time = microsSinceEpoch();
         sleep(1); // Sleep one second
     }
 }
