@@ -13,6 +13,7 @@
 #include "arpa/inet.h"
 #include "iostream"
 
+
 /* ROS library */
 #include "ros/ros.h"
 #include "geometry_msgs/Twist.h"
@@ -26,6 +27,7 @@
 #define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
 
 uint64_t microsSinceEpoch();
+int CheckReceivable(int fd);
 
 class Listener{
 public:
@@ -74,6 +76,8 @@ int main(int argc, char **argv){
     unsigned int mission_total_seq = 0;
     unsigned int mission_seq = 0;
     uint64_t pre_time = 0;
+    int time_interval = 1000000; //1 second
+    int recv_check;
 
     // Change the target ip if parameter was given
     strcpy(target_ip, "127.0.0.1");
@@ -108,88 +112,111 @@ int main(int argc, char **argv){
     pre_time = microsSinceEpoch();
     while (ros::ok()){
         ros::spinOnce();
-        /* time interval */
-        std::cout << microsSinceEpoch() - pre_time << std::endl;
 
-        /*Send Heartbeat */
-        // https://github.com/mavlink/c_library_v1/blob/3da9db30f3ea7fe8fa8241a74ab343b9971e7e9a/common/common.h#L166
-        // Q: Change MANUAL_ARMED Mode
-        mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_QUADROTOR, MAV_AUTOPILOT_PX4, 
-                                   MAV_MODE_GUIDED_ARMED, 3, MAV_STATE_STANDBY);
-        len = mavlink_msg_to_send_buffer(buf, &mavmsg);
-        bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+        /* time interval */        
+        if (microsSinceEpoch() - pre_time > time_interval){
+            std::cout << microsSinceEpoch() - pre_time << std::endl;            
+            /*Send Heartbeat */
+            // https://github.com/mavlink/c_library_v1/blob/3da9db30f3ea7fe8fa8241a74ab343b9971e7e9a/common/common.h#L166
+            // Q: Change MANUAL_ARMED Mode
+            mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_QUADROTOR, MAV_AUTOPILOT_PX4, 
+                                       MAV_MODE_GUIDED_ARMED, 3, MAV_STATE_STANDBY);
+            len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+            bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
-        /* Send Status */
-        mavlink_msg_sys_status_pack(1, 200, &mavmsg, 0, 0, 0, 500, 11000, -1, -1, 0, 0, 0, 0, 0, 0);
-        len = mavlink_msg_to_send_buffer(buf, &mavmsg);
-        bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof (struct sockaddr_in));
+            /* Send Status */
+            mavlink_msg_sys_status_pack(1, 200, &mavmsg, 0, 0, 0, 500, 11000, -1, -1, 0, 0, 0, 0, 0, 0);
+            len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+            bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof (struct sockaddr_in));
 
-        /* Send Local Position */
-        mavlink_msg_local_position_ned_pack(1, 200, &mavmsg, microsSinceEpoch(), 
-                                            position[0], position[1], position[2],
-                                            position[3], position[4], position[5]);
-        len = mavlink_msg_to_send_buffer(buf, &mavmsg);
-        bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+            /* Send Local Position */
+            mavlink_msg_local_position_ned_pack(1, 200, &mavmsg, microsSinceEpoch(), 
+                                                position[0], position[1], position[2],
+                                                position[3], position[4], position[5]);
+            len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+            bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
-        /* Send attitude */ 
-        mavlink_msg_attitude_pack(1, 200, &mavmsg, microsSinceEpoch(), 1.2, 1.7, 3.14, 0.01, 0.02, 0.03);
-        len = mavlink_msg_to_send_buffer(buf, &mavmsg);
-        bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+            /* Send attitude */ 
+            mavlink_msg_attitude_pack(1, 200, &mavmsg, microsSinceEpoch(), 1.2, 1.7, 3.14, 0.01, 0.02, 0.03);
+            len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+            bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
-        memset(buf, 0, BUFFER_LENGTH);
+            /* Send GPS */
+            mavlink_msg_gps_raw_int_pack(1, 200, &mavmsg, 0, GPS_FIX_TYPE_RTK_FIXED, 
+                                         listener.lat, listener.lon, listener.alt, 65535, 65535, 
+                                         65535, 65535, listener.satellites);
+            len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+            bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 
-        /* Send GPS */
-        mavlink_msg_gps_raw_int_pack(1, 200, &mavmsg, 0, GPS_FIX_TYPE_RTK_FIXED, 
-                                     listener.lat, listener.lon, listener.alt, 65535, 65535, 
-                                     65535, 65535, listener.satellites);
-        len = mavlink_msg_to_send_buffer(buf, &mavmsg);
-        bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+            pre_time = microsSinceEpoch();
+        }
 
         /* Mission Request */
-        //if (mission_total_seq > 0){
-        //    mavlink_msg_mission_request_int_pack(1, 200, &mavmsg, 0, 0, mission_seq);
-        //    len = mavlink_msg_to_send_buffer(buf, &mavmsg);
-        //    bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
-        //}
+        if (mission_total_seq > 0){
+            mavlink_msg_mission_request_int_pack(1, 200, &mavmsg, 0, 0, mission_seq);
+            len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+            bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+        }
  
         /* receiver section */
-        recsize = recvfrom(sock, (void *)buf, BUFFER_LENGTH, 0, (struct sockaddr *)&gcAddr, &fromlen);
+        memset(buf, 0, BUFFER_LENGTH);
+        recv_check = CheckReceivable(sock);
+        //std::cout << recv_check << std::endl; //receive check print
 
-        if (recsize > 0){
-            // Something received - print out all bytes and parse packet
-            mavlink_message_t mavmsg;
-            mavlink_status_t status;
+        if (recv_check == 1){
+            recsize = recvfrom(sock, (void *)buf, BUFFER_LENGTH, 0, (struct sockaddr *)&gcAddr, &fromlen);
 
-            printf("Bytes Received: %d\nDatagram: ", (int)recsize);
+            if (recsize > 0){
+                // Something received - print out all bytes and parse packet
+                mavlink_message_t mavmsg;
+                mavlink_status_t status;
 
-            for (i = 0; i < recsize; ++i){
-                temp = buf[i];
-                printf("%02x ", (unsigned char)temp);
-                if (mavlink_parse_char(MAVLINK_COMM_0, buf[i], &mavmsg, &status)){
-                    // Packet received
-                    printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", 
-                           mavmsg.sysid, mavmsg.compid, mavmsg.len, mavmsg.msgid);
+                printf("Bytes Received: %d\nDatagram: ", (int)recsize);
+
+                for (i = 0; i < recsize; ++i){
+                    temp = buf[i];
+                    printf("%02x ", (unsigned char)temp);
+                    if (mavlink_parse_char(MAVLINK_COMM_0, buf[i], &mavmsg, &status)){
+                        // Packet received
+                        printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", 
+                               mavmsg.sysid, mavmsg.compid, mavmsg.len, mavmsg.msgid);
+                    }
                 }
-            }
                 if (mavmsg.msgid == 44){
                     printf("mission count was received\n");
                     printf("%x \n", (unsigned char)buf[6]);
                     mission_total_seq = buf[6];
-                    mavlink_msg_mission_request_int_pack(1, 1, &mavmsg, 255, 0, 0);
-                    len = mavlink_msg_to_send_buffer(buf, &mavmsg);
-                    bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
-                                        sizeof (struct sockaddr_in));
                 }
 
+                /* mission decoder */
                 if (mavmsg.msgid == 73){
+                    mavlink_mission_item_int_t mi;
+
                     printf("mission item was received\n");
+
+                    //decode mission_item_int message
+                    mavlink_msg_mission_item_int_decode(&mavmsg, &mi);
+                    float waypoint_x = mi.x/10000000.0;
+                    float waypoint_y = mi.y/10000000.0;
+                    printf("%f, %f", waypoint_x, waypoint_y);
+                    mission_seq = mission_seq +1;
+
+                    if (mission_total_seq == mission_seq){
+                        mavlink_msg_mission_ack_pack(1, 200, &mavmsg, 0, 0, MAV_MISSION_TYPE_MISSION);
+                        len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+                        bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+
+                        mission_total_seq = 0;
+                        mission_seq = 0;
+                    }
                 }
                 printf("\n");
+            }
+
         }
         memset(buf, 0, BUFFER_LENGTH);
-        
-        pre_time = microsSinceEpoch();
-        sleep(1); // Sleep one second
+
+        usleep(10000); // Sleep 10 msec
     }
 }
 
@@ -201,4 +228,21 @@ uint64_t microsSinceEpoch(){
     micros =  ((uint64_t)tv.tv_sec) * 1000000 + tv.tv_usec;
 
     return micros;
-} 
+}
+
+int CheckReceivable(int fd){
+    fd_set fdset;
+    int re;
+    struct timeval timeout;
+     
+    FD_ZERO(&fdset);
+    FD_SET(fd, &fdset);
+
+    /* timeout */
+    timeout.tv_sec = 1;
+    timeout.tv_usec = 100000;
+
+    /* check receivable */
+    re = select(fd+1, &fdset, NULL, NULL, &timeout);
+    return re;
+}
