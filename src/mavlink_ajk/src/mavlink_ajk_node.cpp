@@ -148,11 +148,11 @@ int main(int argc, char **argv){
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof (struct sockaddr_in));
 
             /* Send Local Position */
-            mavlink_msg_local_position_ned_pack(1, 200, &mavmsg, microsSinceEpoch(), 
-                                                position[0], position[1], position[2],
-                                                position[3], position[4], position[5]);
-            len = mavlink_msg_to_send_buffer(buf, &mavmsg);
-            bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+            //mavlink_msg_local_position_ned_pack(1, 200, &mavmsg, microsSinceEpoch(), 
+            //                                    position[0], position[1], position[2],
+            //                                    position[3], position[4], position[5]);
+            //len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+            //bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
             /* Send attitude */ 
             mavlink_msg_attitude_pack(1, 200, &mavmsg, microsSinceEpoch(), 1.2, 1.7, 3.14, 0.01, 0.02, 0.03);
@@ -227,10 +227,9 @@ int main(int argc, char **argv){
                     // output waypoint
                     if (mavmii.command == 16){
                         fstream fs;
-                        fs.open("/home/nouki/test.txt", ios::out | ios::app);
+                        fs.open("/home/nouki/waypoint.csv", ios::out | ios::app);
                         fs << mission_seq << ",";
-                        fs << fixed << setprecision(8);
-                        fs << waypoint_x << "," << waypoint_y << endl;
+                        fs << fixed << setprecision(6) << waypoint_x << "," << waypoint_y << endl; 
                         fs.close();
                     }
 
