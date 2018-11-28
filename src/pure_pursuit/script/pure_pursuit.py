@@ -15,20 +15,25 @@ from geometry_msgs.msg import Twist
 from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
 
+la_dist = 0.7 # look-ahead distance
+vel = 0.2 # m/s
+
 class pure_pursuit():
     def __init__(self):
         self.waypoint_x = []
         self.waypoint_y = []
-        self.q = np.empty(4)
         self.x = 0
         self.y = 0
+        self.q = np.empty(4)
+        self.yaw = 0
 
         rospy.init_node('pure_pursuit_control')
         rospy.on_shutdown(self.shutdown)
 
         # ROS callback function, receive /odom mesage
-        rospy.Subscriber('/sim_create/diff_drive_controller/odom', Odometry, self.odom_callback) 
-        pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 1)
+        rospy.Subscriber('/sim_ajk/diff_drive_controller/odom', Odometry, self.odom_callback) 
+        self.pub = rospy.Publisher('/sim_ajk/diff_drive_controller/cmd_vel', Twist, queue_size = 1)
+        self.twist = Twist()
         
     def odom_callback(self, msg):
         self.x = msg.pose.pose.position.x
@@ -39,6 +44,7 @@ class pure_pursuit():
         self.q[1] = msg.pose.pose.orientation.y
         self.q[2] = msg.pose.pose.orientation.z
         self.q[3] = msg.pose.pose.orientation.w
+        self.yaw  = euler_from_quaternion((self.q[0], self.q[1], self.q[2], self.q[3]))[2]
 
     def shutdown(self):
         print "shutdown"
@@ -57,8 +63,20 @@ class pure_pursuit():
             b = np.array([self.x, self.y])
             waypoint_dist = np.linalg.norm(b-a)
 
-            print waypoint_dist
-            seq = seq + 1
+            yaw_error = np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))-self.yaw
+
+            target_ang = (2*vel*np.sin(yaw_error))/la_dist
+
+            print [self.waypoint_x[seq], self.waypoint_y[seq]]
+            #print self.x, self.y
+            print waypoint_dist,target_ang
+
+            self.twist.linear.x = vel
+            self.twist.angular.z = target_ang
+            self.pub.publish(self.twist)
+
+            if waypoint_dist < la_dist:
+                seq = seq + 1
             if seq >= len(self.waypoint_x):
                 break
 
