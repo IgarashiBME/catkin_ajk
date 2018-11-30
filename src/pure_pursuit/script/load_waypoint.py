@@ -22,6 +22,7 @@ def load_csv():
 def interpolation(target_x, target_y):
     waypoint_x = []
     waypoint_y = []
+    waypoint_goal = []
     for i in range(len(target_x)-1):
         x0 = target_x[i]
         y0 = target_y[i]
@@ -39,6 +40,12 @@ def interpolation(target_x, target_y):
         waypoint_x = np.append(waypoint_x, x)
         waypoint_y = np.append(waypoint_y, y)
 
+        # set waypoint goal flag
+        for i in range(len(x)):
+            if x[i] == x1 and y[i] == y1:
+                waypoint_goal = np.append(waypoint_goal, 1)
+            else:
+                waypoint_goal = np.append(waypoint_goal, 0)
     #for i in range(waypoint_x.shape[0]):
     #    print waypoint_x[i],",", waypoint_y[i]
-    return waypoint_x, waypoint_y
+    return waypoint_x, waypoint_y, waypoint_goal

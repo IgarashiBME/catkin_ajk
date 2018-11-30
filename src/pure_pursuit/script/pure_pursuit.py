@@ -16,17 +16,20 @@ from gazebo_msgs.msg import ModelStates
 from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
 
-la_dist = 0.7 # look-ahead distance
+la_dist_const = 0.5  # look-ahead distance
 vel = 0.2 # m/s
 
 class pure_pursuit():
     def __init__(self):
         self.waypoint_x = []
         self.waypoint_y = []
+        self.waypoint_goal = []
         self.x = 0
         self.y = 0
         self.q = np.empty(4)
         self.yaw = 0
+
+        self.la_dist = la_dist_const
 
         rospy.init_node('pure_pursuit_control')
         rospy.on_shutdown(self.shutdown)
@@ -80,27 +83,34 @@ class pure_pursuit():
 
             yaw_error = np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))-self.yaw
 
-            target_ang = (2*vel*np.sin(yaw_error))/la_dist
+            target_ang = (2*vel*np.sin(yaw_error))/self.la_dist
 
-            #print [self.waypoint_x[seq], self.waypoint_y[seq]]
-            print self.x, self.y
-            print waypoint_dist,target_ang
+            print [self.waypoint_x[seq], self.waypoint_y[seq]]
+            #print self.x, self.y
+            #print waypoint_dist,target_ang
+            print yaw_error
 
             self.twist.linear.x = vel
             self.twist.angular.z = target_ang
             self.pub.publish(self.twist)
 
+            # when goal is near, 
+            if self.waypoint_goal[seq] == 1.0:
+                self.la_dist = la_dist_const/3
+
             # when reaching the look-ahead distance, read the next waypoint.
-            if waypoint_dist < la_dist:
+            if waypoint_dist < self.la_dist:
                 seq = seq + 1
+                self.la_dist = la_dist_const
             if seq >= len(self.waypoint_x):
                 break
 
     # load waypoint list
     def load_waypoint(self):
         x, y = load_waypoint.load_csv()
-        self.waypoint_x, self.waypoint_y = load_waypoint.interpolation(x, y)
-        #print self.waypoint_x, self.waypoint_y        
+        self.waypoint_x, self.waypoint_y, self.waypoint_goal = load_waypoint.interpolation(x, y)
+        #print self.waypoint_x, self.waypoint_y
+        #print self.waypoint_goal
     
 if __name__ == '__main__':
     p = pure_pursuit()
