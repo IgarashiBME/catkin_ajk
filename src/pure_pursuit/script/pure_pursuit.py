@@ -11,6 +11,7 @@ import load_waypoint
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Twist
+from gazebo_msgs.msg import ModelStates
 
 from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
@@ -31,7 +32,8 @@ class pure_pursuit():
         rospy.on_shutdown(self.shutdown)
 
         # ROS callback function, receive /odom mesage
-        rospy.Subscriber('/sim_ajk/diff_drive_controller/odom', Odometry, self.odom_callback) 
+        # rospy.Subscriber('/sim_ajk/diff_drive_controller/odom', Odometry, self.odom_callback)
+        rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
         self.pub = rospy.Publisher('/sim_ajk/diff_drive_controller/cmd_vel', Twist, queue_size = 1)
         self.twist = Twist()
         
@@ -46,6 +48,18 @@ class pure_pursuit():
         self.q[3] = msg.pose.pose.orientation.w
         self.yaw  = euler_from_quaternion((self.q[0], self.q[1], self.q[2], self.q[3]))[2]
 
+    def truth_callback(self, msg):
+        for i, name in enumerate(msg.name):
+            if name == "sim_ajk":
+                self.x = msg.pose[i].position.x
+                self.y = msg.pose[i].position.y
+                # vehicle's quaternion data in /odom (odometry of ROS message)
+                self.q[0] = msg.pose[i].orientation.x
+                self.q[1] = msg.pose[i].orientation.y
+                self.q[2] = msg.pose[i].orientation.z
+                self.q[3] = msg.pose[i].orientation.w
+                self.yaw  = euler_from_quaternion((self.q[0], self.q[1], self.q[2], self.q[3]))[2]
+
     def shutdown(self):
         print "shutdown"
 
@@ -56,6 +70,7 @@ class pure_pursuit():
             # Confirm the existence of self.x brought by the odom_callback
             try:
                 self.x
+                self.yaw
             except AttributeError:
                 continue
 
@@ -67,14 +82,15 @@ class pure_pursuit():
 
             target_ang = (2*vel*np.sin(yaw_error))/la_dist
 
-            print [self.waypoint_x[seq], self.waypoint_y[seq]]
-            #print self.x, self.y
+            #print [self.waypoint_x[seq], self.waypoint_y[seq]]
+            print self.x, self.y
             print waypoint_dist,target_ang
 
             self.twist.linear.x = vel
             self.twist.angular.z = target_ang
             self.pub.publish(self.twist)
 
+            # when reaching the look-ahead distance, read the next waypoint.
             if waypoint_dist < la_dist:
                 seq = seq + 1
             if seq >= len(self.waypoint_x):
