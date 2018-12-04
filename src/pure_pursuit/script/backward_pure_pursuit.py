@@ -83,26 +83,21 @@ class pure_pursuit():
             b = np.array([self.x, self.y])
             waypoint_dist = np.linalg.norm(b-a)
 
-            # forward
-            yaw_error = np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))-self.yaw
-
-            # backward
-            # yaw_error = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))-self.yaw
+            yaw_error = -np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))+self.yaw
 
             target_ang = (2*vel*np.sin(yaw_error))/self.la_dist
 
             print [self.waypoint_x[seq], self.waypoint_y[seq]]
             #print self.x, self.y
             #print waypoint_dist,target_ang
-            #print yaw_error, target_ang
-            print self.yaw
+            print yaw_error, target_ang
 
             # If the yaw error is large, pivot turn.
-            if abs(yaw_error) > yaw_tolerance:
+            if abs(yaw_error+np.pi) > yaw_tolerance:
                 self.twist.linear.x = 0
                 self.twist.angular.z = target_ang
             else:
-                self.twist.linear.x = vel
+                self.twist.linear.x = -vel
                 self.twist.angular.z = target_ang
             self.pub.publish(self.twist)
 
