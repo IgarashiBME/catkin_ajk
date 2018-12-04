@@ -19,7 +19,7 @@ from tf.transformations import euler_from_quaternion
 
 la_dist_const = 0.5  # look-ahead distance
 vel = 0.2 # m/s
-yaw_tolerance = 45.0/180.0 * np.pi
+yaw_tolerance = 40.0/180.0 * np.pi
 
 class pure_pursuit():
     def __init__(self):
@@ -83,7 +83,26 @@ class pure_pursuit():
             b = np.array([self.x, self.y])
             waypoint_dist = np.linalg.norm(b-a)
 
-            yaw_error = -np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))+self.yaw
+            if self.yaw < 0:    # yaw angle, 0~360 degree
+                self.yaw = self.yaw + 2*np.pi
+
+            # forward
+            #yaw_error = np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))-self.yaw
+
+            # backward
+            yaw_error_a = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))\
+                          -self.yaw
+            yaw_error_b = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))\
+                          -(self.yaw+2*np.pi)
+            yaw_error_c = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))\
+                          +2*np.pi-self.yaw
+
+            if abs(yaw_error_a) <= abs(yaw_error_b) and abs(yaw_error_a) <= abs(yaw_error_c): 
+                yaw_error = yaw_error_a
+            elif abs(yaw_error_b) <= abs(yaw_error_a) and abs(yaw_error_b) <= abs(yaw_error_c):
+                yaw_error = yaw_error_b
+            elif abs(yaw_error_c) <= abs(yaw_error_a) and abs(yaw_error_c) <= abs(yaw_error_b):
+                yaw_error = yaw_error_c
 
             target_ang = (2*vel*np.sin(yaw_error))/self.la_dist
 
@@ -91,9 +110,10 @@ class pure_pursuit():
             #print self.x, self.y
             #print waypoint_dist,target_ang
             print yaw_error, target_ang
+            #print self.yaw
 
             # If the yaw error is large, pivot turn.
-            if abs(yaw_error+np.pi) > yaw_tolerance:
+            if abs(yaw_error) > yaw_tolerance:
                 self.twist.linear.x = 0
                 self.twist.angular.z = target_ang
             else:
