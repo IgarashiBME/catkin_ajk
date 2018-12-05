@@ -87,22 +87,23 @@ class pure_pursuit():
                 self.yaw = self.yaw + 2*np.pi
 
             # forward
-            #yaw_error = np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))-self.yaw
+            yaw_error_a = np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))\
+                          -self.yaw
+            yaw_error_b = np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))\
+                          -(self.yaw+2*np.pi)
+            yaw_error_c = np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))\
+                          +2*np.pi-self.yaw
+            forward_list = [yaw_error_a, yaw_error_b, yaw_error_c]
+
+            yaw_error = forward_list[np.argmin(np.abs(forward_list))] # min yaw error is selected
 
             # backward
-            yaw_error_a = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))\
-                          -self.yaw
-            yaw_error_b = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))\
-                          -(self.yaw+2*np.pi)
-            yaw_error_c = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))\
-                          +2*np.pi-self.yaw
-
-            if abs(yaw_error_a) <= abs(yaw_error_b) and abs(yaw_error_a) <= abs(yaw_error_c): 
-                yaw_error = yaw_error_a
-            elif abs(yaw_error_b) <= abs(yaw_error_a) and abs(yaw_error_b) <= abs(yaw_error_c):
-                yaw_error = yaw_error_b
-            elif abs(yaw_error_c) <= abs(yaw_error_a) and abs(yaw_error_c) <= abs(yaw_error_b):
-                yaw_error = yaw_error_c
+            back_yaw_error_a = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))\
+                               -self.yaw
+            back_yaw_error_b = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))\
+                               -(self.yaw+2*np.pi)
+            back_yaw_error_c = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))\
+                               +2*np.pi-self.yaw
 
             target_ang = (2*vel*np.sin(yaw_error))/self.la_dist
 
@@ -117,7 +118,7 @@ class pure_pursuit():
                 self.twist.linear.x = 0
                 self.twist.angular.z = target_ang
             else:
-                self.twist.linear.x = -vel
+                self.twist.linear.x = vel
                 self.twist.angular.z = target_ang
             self.pub.publish(self.twist)
 
