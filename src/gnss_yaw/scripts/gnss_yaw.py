@@ -7,9 +7,10 @@ import rospy
 import time
 import numpy as np
 
+from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
-from geometry_msgs.msg import Twist
+from std_msgs.msg import String
 
 from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
@@ -52,7 +53,7 @@ def gnss_yaw(utm):
 
         # If you get optimal distance and correlation coefficeint, 
         # publish ROS messages with GNSS yaw(quaternion)
-        if dist > opt_dist and abs(corr[0,1]) > opt_corr and abs(linear_x) > 0:
+        if dist > opt_dist and abs(corr[0,1]) > opt_corr > 0:
             imu_msg.header.frame_id = "gnss_yaw"
             imu_msg.header.stamp = rospy.Time.now()
             q = quaternion_from_euler(0, 0, yaw)    # convert to quaternion (it is ROS function)
@@ -63,14 +64,16 @@ def gnss_yaw(utm):
             
             pub_yaw.publish(imu_msg)
             e = euler_from_quaternion(q)
-            #print x
-            #print y
             print yaw, yaw/np.pi *180, e
 
-def cmd_subs(message):
+def cmd_subs(msg):
     global linear_x
+    linear_x = msg.linear.x
 
-    linear_x = message.linear.x
+def straight_subs(msg):
+    global straight_str
+    straight_str = msg.data
+    print straight_str
 
 def shutdown():
     rospy.loginfo("gnss_yaw_node was terminated")
@@ -80,6 +83,7 @@ def listener():
     rospy.on_shutdown(shutdown)
     rospy.Subscriber('utm', Odometry, gnss_yaw) # ROS callback function
     rospy.Subscriber('cmd_vel', Twist, cmd_subs) # ROS callback function
+    rospy.Subscriber('straight_str', Strings, straight_subs) # ROS callback function
     rospy.spin()
 
 if __name__ == '__main__':
