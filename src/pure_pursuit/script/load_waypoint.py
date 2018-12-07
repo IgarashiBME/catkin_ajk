@@ -19,7 +19,7 @@ def load_csv():
         target_y.append(float(row[1]))
     return target_x, target_y
 
-def interpolation(target_x, target_y):
+def interpolation(target_x, target_y, spacing):
     waypoint_x = []
     waypoint_y = []
     waypoint_goal = []
@@ -29,11 +29,15 @@ def interpolation(target_x, target_y):
         x1 = target_x[i+1]
         y1 = target_y[i+1]
 
+        a = np.array([x0, y0])
+        b = np.array([x1, y1])
+        waypoint_dist = np.abs(np.linalg.norm(b-a))
+
         if abs(x1-x0) > abs(y1-y0):
             f = interp1d([x0,x1], [y0,y1])
             x = np.linspace(x0, x1, int(abs(x1-x0)/ki))
             y = f(x)
-        else:
+        elif abs(x1-x0) < abs(y1-y0):
             f = interp1d([y0,y1], [x0,x1])
             y = np.linspace(y0, y1, int(abs(y1-y0)/ki))
             x = f(y)
@@ -42,7 +46,7 @@ def interpolation(target_x, target_y):
 
         # set waypoint goal flag
         for i in range(len(x)):
-            if x[i] == x1 and y[i] == y1:
+            if x[i] == x1 and y[i] == y1 and waypoint_dist > spacing:
                 waypoint_goal = np.append(waypoint_goal, 1)
             else:
                 waypoint_goal = np.append(waypoint_goal, 0)

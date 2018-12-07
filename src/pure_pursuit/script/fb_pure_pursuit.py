@@ -17,8 +17,9 @@ from gazebo_msgs.msg import ModelStates
 from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
 
-la_dist_const = 0.5  # look-ahead distance [meter]
-vel = 0.2 # [meter/sec]
+la_dist_const = 0.6  # look-ahead distance [meter]
+spacing = 0.6 # distance between lines 
+vel_const = 0.2 # [meter/sec]
 yaw_tolerance = 40.0/180.0 * np.pi # [radians]
 
 class pure_pursuit():
@@ -94,7 +95,6 @@ class pure_pursuit():
             yaw_error_c = np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))\
                           +2*np.pi-self.yaw
             forward_list = [yaw_error_a, yaw_error_b, yaw_error_c]
-
             yaw_error = forward_list[np.argmin(np.abs(forward_list))] # min yaw error is selected
 
             # backward
@@ -104,13 +104,20 @@ class pure_pursuit():
                                -(self.yaw+2*np.pi)
             back_yaw_error_c = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))\
                                +2*np.pi-self.yaw
+            backward_list = [back_yaw_error_a, back_yaw_error_b, back_yaw_error_c]
+            back_yaw_error = backward_list[np.argmin(np.abs(backward_list))]
 
-            target_ang = (2*vel*np.sin(yaw_error))/self.la_dist
+            if abs(yaw_error) > abs(back_yaw_error):
+                yaw_error = back_yaw_error
+                velocity = -vel_const
+            elif abs(yaw_error) < abs(back_yaw_error):
+                velocity = vel_const
+            target_ang = (2*vel_const*np.sin(yaw_error))/self.la_dist
 
             print [self.waypoint_x[seq], self.waypoint_y[seq]]
             #print self.x, self.y
             #print waypoint_dist,target_ang
-            print yaw_error, target_ang
+            print yaw_error, back_yaw_error
             #print self.yaw
 
             # If the yaw error is large, pivot turn.
@@ -118,7 +125,7 @@ class pure_pursuit():
                 self.twist.linear.x = 0
                 self.twist.angular.z = target_ang
             else:
-                self.twist.linear.x = vel
+                self.twist.linear.x = velocity
                 self.twist.angular.z = target_ang
             self.pub.publish(self.twist)
 
@@ -136,7 +143,7 @@ class pure_pursuit():
     # load waypoint list
     def load_waypoint(self):
         x, y = load_waypoint.load_csv()
-        self.waypoint_x, self.waypoint_y, self.waypoint_goal = load_waypoint.interpolation(x, y)
+        self.waypoint_x, self.waypoint_y, self.waypoint_goal = load_waypoint.interpolation(x, y, spacing)
         #print self.waypoint_x, self.waypoint_y
         #print self.waypoint_goal
     
