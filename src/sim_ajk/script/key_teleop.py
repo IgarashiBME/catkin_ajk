@@ -8,6 +8,7 @@ import termios
 import time
 
 from geometry_msgs.msg import Twist
+from std_msgs.msg import String
 
 velocity_x = 0.5
 angular_z = 0.5
@@ -25,6 +26,7 @@ def teleop():
             twist.linear.x = velocity_x; twist.linear.y = 0; twist.linear.z = 0;
             twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0;
             pub.publish(twist)
+            pub_str.publish("straight")
 
         elif str(kb) == "a":
             twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0;
@@ -35,6 +37,7 @@ def teleop():
             twist.linear.x = -velocity_x; twist.linear.y = 0; twist.linear.z = 0;
             twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0;
             pub.publish(twist)
+            pub_str.publish("straight")
 
         elif str(kb) == "d":
             twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0;
@@ -66,6 +69,7 @@ def input():
 if __name__=="__main__":
     pub = rospy.Publisher('/sim_ajk/diff_drive_controller/cmd_vel', Twist, queue_size = 1)
     rospy.init_node('teleop_twist_keyboard')
+    pub_str = rospy.Publisher('/straight_str', String, queue_size = 1)
     print "ready to sim_keyboard_teleop"
     print "w:forward\n\r a:left\n\r s:backward\n\r d:right"
 
