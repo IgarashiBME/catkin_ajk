@@ -1,5 +1,5 @@
 <launch>
-  <node pkg="sanyokiki" type="print_sanyo_cntl.py" name="sanyo_controller" output="screen">
+  <node pkg="sanyokiki" type="print_controller.py" name="sanyo_controller" output="screen">
   </node>
   <node pkg="sanyokiki" type="engine.py" name="engine" output="screen">
   </node>
