@@ -1,0 +1,6 @@
+<launch>
+  <node pkg="sanyokiki" type="pi_controller.py" name="sanyo_controller" output="screen">
+  </node>
+  <node pkg="sanyokiki" type="engine.py" name="engine" output="screen">
+  </node>
+</launch>
