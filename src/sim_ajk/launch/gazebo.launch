@@ -24,6 +24,6 @@
     args="-urdf -model sim_ajk -param robot_description"/>
 
   <node pkg="tf" type="static_transform_publisher" name="static_world_to_odom_publisher" args="0 0 0 0 0 0 /world /odom 100"/>
- 
+  <node pkg="sim_ajk" type="fake_gnss.py" name="fake_gnss" output="screen"/>
  
 </launch>
