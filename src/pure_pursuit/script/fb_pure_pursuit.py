@@ -11,6 +11,7 @@ import load_waypoint
 
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
+from std_msgs.msg import String
 from geometry_msgs.msg import Twist
 from gazebo_msgs.msg import ModelStates
 
@@ -42,6 +43,7 @@ class pure_pursuit():
         rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
         self.pub = rospy.Publisher('/sim_ajk/diff_drive_controller/cmd_vel', Twist, queue_size = 1)
         self.twist = Twist()
+        self.pubstr = rospy.Publisher('/straight_str', String, queue_size = 1)
         
     def odom_callback(self, msg):
         self.x = msg.pose.pose.position.x
@@ -132,11 +134,13 @@ class pure_pursuit():
             # If the goal is close, shorten the look-ahead distance
             if self.waypoint_goal[seq] == 1.0:
                 self.la_dist = la_dist_const/3
+                self.pubstr.publish("not")
 
             # when reaching the look-ahead distance, read the next waypoint.
             if waypoint_dist < self.la_dist:
                 seq = seq + 1
                 self.la_dist = la_dist_const
+                self.pubstr.publish("straight")
             if seq >= len(self.waypoint_x):
                 break
 
