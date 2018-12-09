@@ -41,7 +41,7 @@ def engine():
             engine_onoff = 0
 
         pub_engine.publish(engine_onoff)
-        time.sleep(0.03)
+        time.sleep(0.01)
 
 def messages():
     print "o: engine on,  p: engine off,  q: exit"

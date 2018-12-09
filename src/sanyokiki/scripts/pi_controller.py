@@ -61,7 +61,7 @@ class controller():
         # ROS callback
         rospy.Subscriber('engine_onoff', Int8, self.sendbot, queue_size=1)
         rospy.Subscriber('/sim_ajk/diff_drive_controller/cmd_vel', Twist, self.sendbot_cmd, queue_size=1)
-        rospy.Subscriber('imu/data', Imu, self.imu)
+        rospy.Subscriber('imu/data', Imu, self.imu, queue_size=1)
 
     def send_sanyocontroller(self, ForwardBackward, LeftRight, EngineOn):
         self.ControlCommand = StartByte_1 +StartByte_2 +ForwardBackward +LeftRight +EngineSpeed \
