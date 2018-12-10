@@ -8,6 +8,7 @@ import termios
 import time
 
 from geometry_msgs.msg import Twist
+from std_msgs.msg import String
 
 def teleop():
     linear_value = 0.55
@@ -25,6 +26,7 @@ def teleop():
             twist.linear.x = linear_value; twist.linear.y = 0; twist.linear.z = 0;
             twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0;
             pub.publish(twist)
+            pub_str.publish("straight")
 
         elif str(kb) == "a":    # left
             twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0;
@@ -35,6 +37,7 @@ def teleop():
             twist.linear.x = -linear_value; twist.linear.y = 0; twist.linear.z = 0;
             twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0;
             pub.publish(twist)
+            pub_str.publish("straight")
 
         elif str(kb) == "d":    # right
             twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0;
@@ -101,6 +104,7 @@ def input():
 if __name__=="__main__":
     pub = rospy.Publisher('cmd_vel', Twist, queue_size = 1)
     rospy.init_node('teleop_twist_keyboard')
+    pub_str = rospy.Publisher('/straight_str', String, queue_size = 1)
     manual_str = "ready to sanyo_keyboard_teleop\n\rw:forward, a:left, s:backward, d:right\n\re:r_forward, q:l_forward, z:l_backward, c:r_backward\n\ri:linear speed increase, o:decrease\n\rk:angular speed increase, l:decrease\n\r0:exit"
 
     print manual_str
