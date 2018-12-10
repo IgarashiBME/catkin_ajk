@@ -142,6 +142,8 @@ class pure_pursuit():
                 self.la_dist = la_dist_const
                 self.pubstr.publish("straight")
             if seq >= len(self.waypoint_x):
+                self.twist.linear.x = 0
+                self.twist.angular.z = 0                
                 break
 
     # load waypoint list
