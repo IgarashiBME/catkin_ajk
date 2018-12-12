@@ -46,7 +46,7 @@ class controller():
         self.safetystop()
 
         # initialize serial port
-        """try:
+        try:
             self.ser=serial.Serial(
                 port = '/dev/serial/by-id/usb-TOCOS_TWE-Lite-R_AHXGUC5S-if00-port0',
                 baudrate = 115200,
@@ -55,7 +55,7 @@ class controller():
             )
         except serial.serialutil.SerialException:
             rospy.logerr("port not found")
-            sys.exit(0)"""
+            sys.exit(0)
 
         rospy.on_shutdown(self.shutdown)
         print "ready to controller"
@@ -71,8 +71,8 @@ class controller():
 
         t1 = time.time()
         for i in range(CommandLength):
-            """self.ser.write(self.ControlCommand[0+i:1+i])
-            self.ser.flush()"""
+            self.ser.write(self.ControlCommand[0+i:1+i])
+            self.ser.flush()
             #print self.ControlCommand[0+i:1+i] #debug option
 
         t2 = time.time()
@@ -82,7 +82,7 @@ class controller():
         # debug option
         #t3 = time.time()
         #print (t3-t1)
-        #print self.ControlCommand
+        print self.ControlCommand
 
     def sendbot_cmd(self, new_cmd):
         self.cmd_vel_time = rospy.Time.now().secs
@@ -146,6 +146,7 @@ class controller():
                 if len(hist) > 7:
                     hist.pop()
                 ig = self.i(hist, self.angular_cmd) 
+
                 power = pg +ig
                 if power < 0:
                     power = 0
@@ -154,7 +155,7 @@ class controller():
  
                 On_Time  = GNSS_Freq * power
                 Off_Time = GNSS_Freq * (1 - power)
-                print pg, ig
+                #print pg, ig
                 #print "Ontime", "{0:.3f}".format(On_Time), "Offtime", "{0:.3f}".format(Off_Time)
 
                 if self.linear_cmd >= 0:
