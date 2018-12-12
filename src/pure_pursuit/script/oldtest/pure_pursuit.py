@@ -37,8 +37,8 @@ class pure_pursuit():
         rospy.on_shutdown(self.shutdown)
 
         # ROS callback function, receive /odom mesage
-        # rospy.Subscriber('/sim_ajk/diff_drive_controller/odom', Odometry, self.odom_callback)
-        rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
+        rospy.Subscriber('/utm', Odometry, self.odom_callback)
+        #rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
         self.pub = rospy.Publisher('/sim_ajk/diff_drive_controller/cmd_vel', Twist, queue_size = 1)
         self.twist = Twist()
         

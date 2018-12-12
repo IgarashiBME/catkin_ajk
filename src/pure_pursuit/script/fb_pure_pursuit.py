@@ -39,8 +39,8 @@ class pure_pursuit():
         rospy.on_shutdown(self.shutdown)
 
         # ROS callback function, receive /odom mesage
-        # rospy.Subscriber('/sim_ajk/diff_drive_controller/odom', Odometry, self.odom_callback)
-        rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
+        rospy.Subscriber('/gnss_imu', Odometry, self.odom_callback, queue_size = 1)
+        # rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
         self.pub = rospy.Publisher('/sim_ajk/diff_drive_controller/cmd_vel', Twist, queue_size = 1)
         self.twist = Twist()
         self.pubstr = rospy.Publisher('/straight_str', String, queue_size = 1)
@@ -116,11 +116,11 @@ class pure_pursuit():
                 velocity = vel_const
             target_ang = (2*vel_const*np.sin(yaw_error))/self.la_dist
 
-            print [self.waypoint_x[seq], self.waypoint_y[seq]]
+            #print [self.waypoint_x[seq], self.waypoint_y[seq]]
             #print self.x, self.y
             #print waypoint_dist,target_ang
-            print yaw_error, back_yaw_error
-            #print self.yaw
+            #print yaw_error, back_yaw_error
+            print target_ang
 
             # If the yaw error is large, pivot turn.
             if abs(yaw_error) > yaw_tolerance:
