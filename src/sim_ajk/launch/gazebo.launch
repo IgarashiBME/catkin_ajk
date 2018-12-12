@@ -25,5 +25,6 @@
 
   <node pkg="tf" type="static_transform_publisher" name="static_world_to_odom_publisher" args="0 0 0 0 0 0 /world /odom 100"/>
   <node pkg="sim_ajk" type="gnss_imu.py" name="gnss_imu" output="screen"/>
+  <node pkg="sim_ajk" type="imu_dummy.py" name="imu_dummy" output="screen"/>
  
 </launch>
