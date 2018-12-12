@@ -10,39 +10,74 @@ import time
 from geometry_msgs.msg import Twist
 from std_msgs.msg import String
 
-velocity_x = 0.5
-angular_z = 0.5
-
 def teleop():
+    linear_value = 0.55
+    angular_value = 0.45
+
     while not rospy.is_shutdown():
         kb = input()
         twist = Twist()
     
-        if str(kb) == 'q':
+        if str(kb) == '0':
             print("exit")
             exit()
 
-        elif str(kb) == "w":
-            twist.linear.x = velocity_x; twist.linear.y = 0; twist.linear.z = 0;
+        elif str(kb) == "w":    # forward
+            twist.linear.x = linear_value; twist.linear.y = 0; twist.linear.z = 0;
             twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0;
             pub.publish(twist)
             pub_str.publish("straight")
 
-        elif str(kb) == "a":
+        elif str(kb) == "a":    # left
             twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0;
-            twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = angular_z;
+            twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = angular_value;
             pub.publish(twist)
 
-        elif str(kb) == "s":
-            twist.linear.x = -velocity_x; twist.linear.y = 0; twist.linear.z = 0;
+        elif str(kb) == "s":    # backward
+            twist.linear.x = -linear_value; twist.linear.y = 0; twist.linear.z = 0;
             twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0;
             pub.publish(twist)
             pub_str.publish("straight")
 
-        elif str(kb) == "d":
+        elif str(kb) == "d":    # right
             twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0;
-            twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = -angular_z;
+            twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = -angular_value;
             pub.publish(twist)
+
+        elif str(kb) == "e":    # right forward
+            twist.linear.x = linear_value; twist.linear.y = 0; twist.linear.z = 0;
+            twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = -angular_value;
+            pub.publish(twist)
+
+        elif str(kb) == "q":    # left forward
+            twist.linear.x = linear_value; twist.linear.y = 0; twist.linear.z = 0;
+            twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = angular_value;
+            pub.publish(twist)
+
+        elif str(kb) == "z":    # left backward
+            twist.linear.x = -linear_value; twist.linear.y = 0; twist.linear.z = 0;
+            twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = angular_value;
+            pub.publish(twist)
+
+        elif str(kb) == "c":    # right backward
+            twist.linear.x = -linear_value; twist.linear.y = 0; twist.linear.z = 0;
+            twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = -angular_value;
+            pub.publish(twist)
+
+        elif str(kb) == "i":    # linear speed increase
+            linear_value = linear_value + 0.05
+        elif str(kb) == "o":    # linear speed decrease
+            linear_value = linear_value - 0.05
+        elif str(kb) == "k":    # angular speed increase
+            angular_value = angular_value + 0.05
+        elif str(kb) == "l":    # angular speed decrease
+            angular_value = angular_value - 0.05
+
+
+        elif kb == None:
+            twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0;
+            twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0;
+            pub.publish(twist)       
 
         time.sleep(0.01)
 
@@ -70,7 +105,8 @@ if __name__=="__main__":
     pub = rospy.Publisher('/sim_ajk/diff_drive_controller/cmd_vel', Twist, queue_size = 1)
     rospy.init_node('teleop_twist_keyboard')
     pub_str = rospy.Publisher('/straight_str', String, queue_size = 1)
-    print "ready to sim_keyboard_teleop"
-    print "w:forward\n\r a:left\n\r s:backward\n\r d:right"
+    manual_str = "ready to sanyo_keyboard_teleop\n\rw:forward, a:left, s:backward, d:right\n\re:r_forward, q:l_forward, z:l_backward, c:r_backward\n\ri:linear speed increase, o:decrease\n\rk:angular speed increase, l:decrease\n\r0:exit"
+
+    print manual_str
 
     teleop()
