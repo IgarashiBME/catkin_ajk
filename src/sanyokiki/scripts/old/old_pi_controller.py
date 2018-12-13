@@ -27,14 +27,14 @@ LineFeed = chr(0x0d)
 CarriageReturn = chr(0x0a)
 CommandLength = 36            # command of sanyokiki weeder is 36 length.
 
-Control_Max = 739
-Control_Min = 281
-LR_Opt = 48
-Opt_Angular = 0.4  # [radian/sec]
+Control_Max = 852
+Control_Min = 172
+Left_Opt = 464
+Right_Opt = 560
 SleepConstant = 0.050 # second
+GNSS_Freq = 0.24
 
 Kp = 0.5
-Ki = 0.01
 
 class controller():
     def __init__(self):
@@ -81,7 +81,7 @@ class controller():
         # debug option
         #t3 = time.time()
         #print (t3-t1)
-        print self.ControlCommand
+        #print self.ControlCommand
 
     def sendbot_cmd(self, new_cmd):
         self.cmd_vel_time = rospy.Time.now().secs
@@ -103,18 +103,17 @@ class controller():
                 print "safety stop by detecting /cmd_vel interruption"
 
         # statement of serial write
-        self.send_sanyocontroller(str(self.FB_command), str(self.LR_command), self.EngineOn)
+        self.send_sanyocontroller(str(self.FB_hex), str(self.LR_hex), self.EngineOn)
 
     def imu(self, msg):
         # vehicle's angular velocity
         self.imu_angular = msg.angular_velocity.z
 
     def safetystop(self):
-        self.FB_command = '0' +hex(ForwardBackward_Neutral)[2:5]
-        self.LR_command = '0' +hex(LeftRight_Neutral)[2:5]
+        self.FB_hex = '0' +hex(ForwardBackward_Neutral)[2:5]
+        self.LR_hex = '0' +hex(LeftRight_Neutral)[2:5]
 
     def loop(self):
-        hist = []
         while not rospy.is_shutdown():
             try:
                 self.angular_cmd
@@ -124,74 +123,51 @@ class controller():
                 continue
 
             # pivot turn
-            if self.linear_cmd == 0 and self.angular_cmd > 0:
+            if self.linear == 0 and self.angular > 0:
                 self.ForwardBackward_value = ForwardBackward_Neutral
                 self.LeftRight_value = Control_Max
-                self.to_hex()
-                continue
-            elif self.linear_cmd == 0 and self.angular_cmd < 0:
+                to_hex()
+            elif self.linear == 0 and self.angular < 0:
                 self.ForwardBackward_value = ForwardBackward_Neutral
                 self.LeftRight_value = Control_Min
-                self.to_hex()
-                continue
-
+                to_hex()
             # PI control
-            elif self.linear_cmd != 0 or self.angular_cmd != 0:
-                # proposal
-                pg = self.p(self.imu_angular, self.angular_cmd)
-
-                # integral
-                hist.insert(0, self.imu_angular)
-                if len(hist) > 7:
-                    hist.pop()
-                ig = self.i(hist, self.angular_cmd) 
-                power = pg+ig
-                if power > Opt_Angular:
-                    power = Opt_Angular
-                elif power < -Opt_Angular:
-                    power = -Opt_Angular
-
-                LR_power = int(power/Opt_Angular * LR_Opt)
-
-                if self.linear_cmd >= 0:
-                    self.ForwardBackward_value = Control_Max
-                    self.LeftRight_value = LeftRight_Neutral +LR_power
-                    self.to_hex()
-                elif self.linear_cmd <= 0:
-                    self.ForwardBackward_value = Control_Min
-                    self.LeftRight_value = LeftRight_Neutral +LR_power
-                    self.to_hex()
             else:
-                self.ForwardBackward_value = ForwardBackward_Neutral
-                self.LeftRight_value = LeftRight_Neutral
-                self.to_hex()
-               
+                power = p(self.imu_angular, self.angular_cmd)               
+                On_Time  = GNSS_Freq * power
+                Off_Time = GNSS_Freq * (1 - power)
+                if self.linear > 0:
+                    self.ForwardBackward_value = Control_Max
+                    self.LeftRight_value = LeftRight_Neutral
+                elif self.linear < 0:
+                    self.ForwardBackward_value = Control_Min
+                    self.LeftRight_value = LeftRight_Neutral
+                to_hex()
+                time.sleep(Off_Time)   
 
-    def to_hex(self):
-        self.FB_hex = '0' + hex(self.ForwardBackward_value)[2:5]
+                if self.angular_cmd >= 0:
+                    self.LeftRight_value = Right_Opt
+                elif self.angular_cmd <= 0:
+                    self.LeftRight_value = Left_Opt
+                to_hex()
+                time.sleep(On_Time)               
+
+    def to_hex():
+        self.FB_hex = '0' +hex(self.ForwardBackward_value)[2:5]
         self.LR_hex = '0' + hex(self.LeftRight_value)[2:5]
         # upper case is required for sanyo command
         if self.FB_hex.islower() == True:
-            self.FB_command = self.FB_hex.upper()
-        else:
-            self.FB_command = self.FB_hex
+            self.FB_hex = self.FB_hex.upper()
         if self.LR_hex.islower() == True:
-            self.LR_command = self.LR_hex.upper()
-        else:
-            self.LR_command = self.LR_hex
+            self.LR_hex = self.LR_hex.upper()
 
     def p(self, current, target):
-        d = target - current
+        d = abs(target - current)
+        power = d / target * Kp
+        if power > 1:
+            power = 1
 
-        return d
-
-    def i(self, hist, target):
-        s = 0
-        for i in range(len(hist)-1):
-            d1 = target - hist[i]
-            d2 = target - hist[i+1]
-            s += (d1+d2)/2 * Ki
-        return s
+        return power
 
     def shutdown(self):
         rospy.loginfo("sanyo controller was terminated")
