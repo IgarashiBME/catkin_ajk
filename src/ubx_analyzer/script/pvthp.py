@@ -69,7 +69,6 @@ class ublox():
                             self.HPPOSLLH_Function(NAV_HPPOSLLH_Data)
 
     def HPPOSLLH_Function(self, Data):
-        print "HPPOSLLH"
         #print binascii.b2a_hex(Data)
         if Data.__len__() == NAV_HPPOSLLH_Length:
             gpst = float(struct.unpack('I', struct.pack('BBBB', Data[6], Data[7],
@@ -106,13 +105,13 @@ class ublox():
             self.utm_hp.heightHp = heightHp
             self.pub_utm_hp.publish(self.utm_hp)
 
-        print gpst
-        print "lat:"+str(latitudeHp), "lon:"+str(longitudeHp), "alt:"+ str(heightHp)
-        print "east:" + str(x), "north:" + str(y)
-        print
+            print "HPPOSLLH"
+            print gpst
+            print "lat:"+str(latitudeHp), "lon:"+str(longitudeHp), "alt:"+ str(heightHp)
+            print "east:" + str(x), "north:" + str(y)
+            print
     
     def PVT_Function(self, NAV_PVT_Data):
-        print "NavPVT"
         #print binascii.b2a_hex(NAV_PVT_Data)
 
         if NAV_PVT_Data.__len__() == NAV_PVT_Length:
@@ -129,10 +128,10 @@ class ublox():
             # decode RTK fix flag
             fix_flag = int(struct.unpack('B', struct.pack('B', NAV_PVT_Data[23]))[0])
             fix_flag = bin(fix_flag)[2:].zfill(8)
-            if fix_flag[0:2] == str(10):
+            if fix_flag[0:2] == "10":
                 self.fix_status = 2    # when rtk was fixed, publish 2
                 fix_str = "RTK fixed solution"
-            elif fix_flag[0:2] == str(01):
+            elif fix_flag[0:2] == "01":
                 self.fix_status= 1     # when rtk was float, publish 1
                 fix_str = "RTK float solution"
             else:
@@ -184,6 +183,7 @@ class ublox():
             time_data = str(year) + "," + str(month) + "," + str(day) + "," + str(hour) \
                         + "," + str(minute) + "," + str(second)
             coordinate_data = str(latitude) + "," + str(longitude) + "," + str(height)
+            print "NavPVT"
             print gpst
             print time_data
             print fix_str, self.fix_status, fix_flag[0:2]
