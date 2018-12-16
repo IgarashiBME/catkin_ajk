@@ -16,7 +16,7 @@ from tf.transformations import euler_from_quaternion
 
 x = []
 y = []
-vel = []
+vel = np.array([])
 
 opt_corr = 0.95 # threshold correlation coefficeint
 opt_dist = 0.4 # threshold distance(unit:meter)
@@ -27,16 +27,16 @@ imu_msg = Imu()
 linear_x = 0
 
 def gnss_yaw(utm):
-    global linear_x, straight_str
+    global linear_x, straight_str, vel
 
     x.append(utm.pose.pose.position.x)    # read ROS /utm topic data
     y.append(utm.pose.pose.position.y)
-    vel.append(linear_x)
+    vel = np.append(vel, linear_x)
 
     if len(x) > 10:
         x.pop(0)
         y.pop(0)
-        vel.pop(0)
+        vel = np.delete(vel, 0)
 
     if len(x) > 9:
         # calculate yaw from trajectory
@@ -46,7 +46,7 @@ def gnss_yaw(utm):
         if linear_x < 0 and yaw < 0:
             yaw = yaw + np.pi
         elif linear_x < 0 and yaw > 0:
-            yaw = yaw - np.pi        
+            yaw = yaw - np.pi
 
         # linearity check of trajectory
         corr = np.corrcoef(x, y)    # calculate correlation coefficeint
@@ -67,11 +67,13 @@ def gnss_yaw(utm):
             
                 pub_yaw.publish(imu_msg)
                 e = euler_from_quaternion(q)
+                #print vel
+                #print np.all(vel < 0), np.all(vel > 0)
                 print yaw, yaw/np.pi *180, e
 
 def cmd_subs(msg):
     global linear_x
-    linear_x = msg.linear.x
+    linear_x = float(msg.linear.x)
 
 def shutdown():
     rospy.loginfo("gnss_yaw_node was terminated")
@@ -81,6 +83,7 @@ def listener():
     rospy.on_shutdown(shutdown)
     rospy.Subscriber('utm', Odometry, gnss_yaw) # ROS callback function
     rospy.Subscriber('cmd_vel', Twist, cmd_subs) # ROS callback function
+    #rospy.Subscriber('/sim_ajk/diff_drive_controller/cmd_vel', Twist, cmd_subs)
     rospy.spin()
 
 if __name__ == '__main__':
