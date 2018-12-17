@@ -1,0 +1,7 @@
+alias sanyo='roslaunch sanyokiki ajk.launch'
+alias bno='roslaunch bosch_imu_driver imu_gnss.launch'
+alias gnss_yaw='roslaunch gnss_yaw gnss_imu.launch'
+alias teleop='rosrun sanyokiki key.py'
+
+alias zigzag='rosrun pure_pursuit zigzag_route.py'
+alias auto='rosrun pure_pursuit fb_pure_pursuit'
