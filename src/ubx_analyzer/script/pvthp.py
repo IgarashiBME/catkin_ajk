@@ -103,6 +103,10 @@ class ublox():
             self.utm_hp.utm_easting = x
             self.utm_hp.utm_northing = y
             self.utm_hp.heightHp = heightHp
+            self.utm_hp.hMSL = self.hMSL
+            self.utm_hp.hAcc = self.hAcc
+            self.utm_hp.vAcc = self.vAcc
+            self.utm_hp.pDOP = self.pDOP
             self.pub_utm_hp.publish(self.utm_hp)
 
             print "HPPOSLLH"
@@ -150,6 +154,17 @@ class ublox():
                                             NAV_PVT_Data[33]))[0])/10000000.0
             height = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[34], NAV_PVT_Data[35], 
                                          NAV_PVT_Data[36], NAV_PVT_Data[37]))[0])/1000.0
+
+            # sea level
+            self.hMSL = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[38], NAV_PVT_Data[39], 
+                                                             NAV_PVT_Data[40], NAV_PVT_Data[41]))[0])/1000.0
+
+            # accuracy
+            self.hAcc = float(struct.unpack('I', struct.pack('BBBB', NAV_PVT_Data[42], NAV_PVT_Data[43],
+                                                              NAV_PVT_Data[44], NAV_PVT_Data[45]))[0])
+            self.vAcc = float(struct.unpack('I', struct.pack('BBBB', NAV_PVT_Data[46], NAV_PVT_Data[47],
+                                                              NAV_PVT_Data[48], NAV_PVT_Data[49]))[0])
+            self.pDOP = int(struct.unpack('h', struct.pack('BB', NAV_PVT_Data[78], NAV_PVT_Data[79]))[0])
 
             # publish rostime and gpstime
             self.pub_gpst.publish(str(rospy.Time.now()) +"," +str(gpst))
