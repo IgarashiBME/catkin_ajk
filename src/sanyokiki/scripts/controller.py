@@ -53,8 +53,8 @@ class controller():
 
         rospy.on_shutdown(self.shutdown)
         print "ready to controller"
-        rospy.Subscriber('engine_onoff', Int8, self.sendbot)    # ROS callback function of engine command
-        rospy.Subscriber('cmd_vel', Twist, self.sendbot_cmd)    # ROS callback function of cmd_vel
+        rospy.Subscriber('engine_onoff', Int8, self.sendbot, queue_size=1)    # ROS callback function of engine command
+        rospy.Subscriber('cmd_vel', Twist, self.sendbot_cmd, queue_size=1)    # ROS callback function of cmd_vel
         rospy.Subscriber('human_proximity', HumanProximity, self.proximity)    # ROS callback function
         #rospy.spin()
 
