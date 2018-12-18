@@ -109,11 +109,11 @@ class ublox():
             self.utm_hp.pDOP = self.pDOP
             self.pub_utm_hp.publish(self.utm_hp)
 
-            print "HPPOSLLH"
-            print gpst
-            print "lat:"+str(latitudeHp), "lon:"+str(longitudeHp), "alt:"+ str(heightHp)
-            print "east:" + str(x), "north:" + str(y)
-            print
+            #print "HPPOSLLH"
+            #print gpst
+            #print "lat:"+str(latitudeHp), "lon:"+str(longitudeHp), "alt:"+ str(heightHp)
+            #print "east:" + str(x), "north:" + str(y)
+            #print
     
     def PVT_Function(self, NAV_PVT_Data):
         #print binascii.b2a_hex(NAV_PVT_Data)
@@ -198,13 +198,13 @@ class ublox():
             time_data = str(year) + "," + str(month) + "," + str(day) + "," + str(hour) \
                         + "," + str(minute) + "," + str(second)
             coordinate_data = str(latitude) + "," + str(longitude) + "," + str(height)
-            print "NavPVT"
-            print gpst
-            print time_data
-            print fix_str, self.fix_status, fix_flag[0:2]
-            print coordinate_data
-            print "east:" + str(x), "north:" + str(y)
-            print
+            #print "NavPVT"
+            #print gpst
+            #print time_data
+            #print fix_str, self.fix_status, fix_flag[0:2]
+            #print coordinate_data
+            #print "east:" + str(x), "north:" + str(y)
+            #print
 
     def shutdown(self):
         rospy.loginfo("ublox analyzer node was terminated") 
