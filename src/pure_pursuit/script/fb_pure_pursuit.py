@@ -120,7 +120,7 @@ class pure_pursuit():
             #print self.x, self.y
             #print waypoint_dist,target_ang
             #print yaw_error, back_yaw_error
-            print target_ang
+            #print target_ang
 
             # If the yaw error is large, pivot turn.
             if abs(yaw_error) > yaw_tolerance:
@@ -145,6 +145,7 @@ class pure_pursuit():
                 self.twist.linear.x = 0
                 self.twist.angular.z = 0                
                 break
+            time.sleep(0.01)
 
     # load waypoint list
     def load_waypoint(self):
