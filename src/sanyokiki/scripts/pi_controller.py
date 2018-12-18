@@ -9,6 +9,7 @@ import math
 
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Imu
+from std_msgs.msg import String
 from std_msgs.msg import Int8
 from nav_msgs.msg import Odometry
 
@@ -62,6 +63,7 @@ class controller():
         rospy.Subscriber('engine_onoff', Int8, self.sendbot, queue_size=1)
         rospy.Subscriber('/sim_ajk/diff_drive_controller/cmd_vel', Twist, self.sendbot_cmd, queue_size=1)
         rospy.Subscriber('imu/data', Imu, self.imu, queue_size=1)
+        self.pub_pi = rospy.Publisher('pi_value', String, queue_size = 1)
 
     def send_sanyocontroller(self, ForwardBackward, LeftRight, EngineOn):
         self.ControlCommand = StartByte_1 +StartByte_2 +ForwardBackward +LeftRight +EngineSpeed \
@@ -146,6 +148,8 @@ class controller():
                     hist.pop()
                 ig = self.i(hist, self.angular_cmd) 
                 power = pg+ig
+                self.pub_pi.publish(str(rospy.Time.now()) +"," +str(pg) +"," +str(ig))
+
                 if power > Opt_Angular:
                     power = Opt_Angular
                 elif power < -Opt_Angular:
