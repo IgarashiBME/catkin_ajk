@@ -75,6 +75,10 @@ def cmd_subs(msg):
     global linear_x
     linear_x = float(msg.linear.x)
 
+def simulator_cmd(msg):
+    global linear_x
+    linear_x = float(msg.linear.x)
+
 def shutdown():
     rospy.loginfo("gnss_yaw_node was terminated")
 
@@ -83,7 +87,7 @@ def listener():
     rospy.on_shutdown(shutdown)
     rospy.Subscriber('utm', Odometry, gnss_yaw) # ROS callback function
     rospy.Subscriber('cmd_vel', Twist, cmd_subs) # ROS callback function
-    #rospy.Subscriber('/sim_ajk/diff_drive_controller/cmd_vel', Twist, cmd_subs)
+    rospy.Subscriber('/sim_ajk/diff_drive_controller/cmd_vel', Twist, simulator_cmd) # ROS callback function
     rospy.spin()
 
 if __name__ == '__main__':
