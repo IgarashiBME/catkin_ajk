@@ -57,6 +57,10 @@ class gnss_dummy():
 
                 self.imu.header.stamp = rospy.Time.now()
                 self.imu.angular_velocity.z = angular_vel_z
+                self.imu.orientation.x = self.qx
+                self.imu.orientation.y = self.qy
+                self.imu.orientation.z = self.qz
+                self.imu.orientation.w = self.qw
                 self.pub_imu.publish(self.imu)
 
             pre_t = current_t
