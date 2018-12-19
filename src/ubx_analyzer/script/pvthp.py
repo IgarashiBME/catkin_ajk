@@ -100,8 +100,8 @@ class ublox():
             #publish navsatfix
             self.navsat.header.stamp = rospy.Time.now()
             self.navsat.status.status = self.fix_status
-            self.navsat.latitude = longitudeHp
-            self.navsat.longitude = latitudeHp
+            self.navsat.latitude = latitudeHp
+            self.navsat.longitude = longitudeHp
             self.navsat.altitude = heightHp
             self.navsat.position_covariance = np.array([self.hAcc,0,0,0,self.hAcc,0,0,0,self.vAcc])
             self.pub_navsat.publish(self.navsat)
