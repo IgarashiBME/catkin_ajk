@@ -143,7 +143,7 @@ class ublox():
             
             # decode RTK fix flag
             fix_flag = int(struct.unpack('B', struct.pack('B', NAV_PVT_Data[23]))[0])
-            fix_fix_flagflag = bin(fix_flag)[2:].zfill(8)
+            fix_flag = bin(fix_flag)[2:].zfill(8)
             if fix_flag[0:2] == "10":
                 self.fix_status = 2    # when rtk was fixed, publish 2
                 fix_str = "RTK fixed solution"
