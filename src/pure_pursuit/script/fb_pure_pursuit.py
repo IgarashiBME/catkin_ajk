@@ -86,28 +86,39 @@ class pure_pursuit():
             b = np.array([self.x, self.y])
             waypoint_dist = np.linalg.norm(b-a)
 
-            if self.yaw < 0:    # yaw angle, 0~360 degree
+            if self.yaw < 0:    # yaw angle, 0~2pai radian (0~360 degree)
                 self.yaw = self.yaw + 2*np.pi
 
             # forward
-            yaw_error_a = np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))\
-                          -self.yaw
-            yaw_error_b = np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))\
-                          -(self.yaw+2*np.pi)
-            yaw_error_c = np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))\
-                          +2*np.pi-self.yaw
+            forward_yaw = np.arctan2((self.waypoint_y[seq]-self.y), (self.waypoint_x[seq]-self.x))
+            """if forward_yaw < 0:   # yaw angle, 0~2pai radian (0~360 degree)
+                forward_yaw = forward_yaw + 2*np.pi"""
+
+            yaw_error_a = forward_yaw -self.yaw
+            yaw_error_b = forward_yaw -(self.yaw+2*np.pi)
+            yaw_error_c = forward_yaw +2*np.pi -self.yaw
             forward_list = [yaw_error_a, yaw_error_b, yaw_error_c]
             yaw_error = forward_list[np.argmin(np.abs(forward_list))] # min yaw error is selected
 
             # backward
-            back_yaw_error_a = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))\
-                               -self.yaw
-            back_yaw_error_b = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))\
-                               -(self.yaw+2*np.pi)
-            back_yaw_error_c = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))\
-                               +2*np.pi-self.yaw
+            backward_yaw = np.arctan2((-self.waypoint_y[seq]+self.y), (-self.waypoint_x[seq]+self.x))
+            """if backward_yaw < 0:   # yaw angle, 0~2pai radian (0~360 degree)
+                backward_yaw = backward_yaw + 2*np.pi"""
+
+            back_yaw_error_a = backward_yaw -self.yaw
+            back_yaw_error_b = backward_yaw -(self.yaw+2*np.pi)
+            back_yaw_error_c = backward_yaw +2*np.pi-self.yaw
             backward_list = [back_yaw_error_a, back_yaw_error_b, back_yaw_error_c]
             back_yaw_error = backward_list[np.argmin(np.abs(backward_list))]
+
+
+            #print "forward:", forward_yaw
+            #print "back", backward_yaw
+            #print "self", self.yaw
+            #print "f",forward_list
+            #print "b",backward_list
+            print "forward:", yaw_error
+            print "back", back_yaw_error
 
             if abs(yaw_error) > abs(back_yaw_error):
                 yaw_error = back_yaw_error
