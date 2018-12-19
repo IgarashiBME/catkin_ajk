@@ -10,6 +10,7 @@ from pyproj import Proj
 # ROS message form
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
+from sensor_msgs.msg import NavSatFix
 from ubx_analyzer.msg import NavPVT 
 from ubx_analyzer.msg import UTMHP
 
@@ -37,9 +38,11 @@ class ublox():
 
         # ROS publisher initialize
         self.pub_gpst = rospy.Publisher('gpstime', String, queue_size = 1)
+        self.pub_navsat = rospy.Publisher('RTK_NavSatFix', NavSatFix, queue_size = 1)
         self.pub_utm = rospy.Publisher('utm', Odometry, queue_size = 1)
         self.pub_navpvt = rospy.Publisher('navpvt', NavPVT, queue_size = 1)
         self.pub_utm_hp = rospy.Publisher('utm_hp', UTMHP, queue_size = 1)
+        self.navsat = NavSatFix()
         self.utm = Odometry()
         self.navpvt_data = NavPVT()
         self.utm_hp = UTMHP()
@@ -93,7 +96,16 @@ class ublox():
             utmzone = int((longitude + 180)/6) +1   # If you are on the specific location, can't be calculated. 
             convertor = Proj(proj='utm', zone=utmzone, ellps='WGS84')
             x, y = convertor(longitudeHp, latitudeHp)
-
+            
+            #publish navsatfix
+            self.navsat.header.stamp = rospy.Time.now()
+            self.navsat.status.status = self.fix_status
+            self.navsat.latitude = longitudeHp
+            self.navsat.longitude = latitudeHp
+            self.navsat.altitude = heightHp
+            self.navsat.position_covariance = np.array([self.hAcc,0,0,0,self.hAcc,0,0,0,self.vAcc])
+            self.pub_navsat.publish(self.navsat)
+            
             # Publish utm_hp
             self.utm_hp.iTOW = gpst
             self.utm_hp.numSV = self.satellites
