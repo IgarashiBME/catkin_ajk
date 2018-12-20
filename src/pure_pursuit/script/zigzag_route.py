@@ -62,13 +62,13 @@ def writer():
                 if i%2 == 1: 
                     waypoint_x.append(dist)
                     waypoint_x.append(0)
-                    waypoint_y.append(dist_line + i * dist_line)
-                    waypoint_y.append(dist_line + i * dist_line)
+                    waypoint_y.append(dist_line + (i-1) * dist_line)
+                    waypoint_y.append(dist_line + (i-1) * dist_line)
                 else:
                     waypoint_x.append(0)
                     waypoint_x.append(dist)
-                    waypoint_y.append(dist_line + i * dist_line)
-                    waypoint_y.append(dist_line + i * dist_line)                    
+                    waypoint_y.append(dist_line + (i-1) * dist_line)
+                    waypoint_y.append(dist_line + (i-1) * dist_line)                    
 
             for i in range(len(waypoint_x)):
                listdata = []
