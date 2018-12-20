@@ -30,6 +30,8 @@ CommandLength = 36            # command of sanyokiki weeder is 36 length.
 
 Control_Max = 739
 Control_Min = 281
+Pivot_Max = 640
+Pivot_Min = 332
 LR_Opt = 48
 Opt_Angular = 0.4  # [radian/sec]
 SleepConstant = 0.050 # second
@@ -128,12 +130,12 @@ class controller():
             # pivot turn
             if self.linear_cmd == 0 and self.angular_cmd > 0:
                 self.ForwardBackward_value = ForwardBackward_Neutral
-                self.LeftRight_value = Control_Max
+                self.LeftRight_value = Pivot_Max
                 self.to_hex()
                 continue
             elif self.linear_cmd == 0 and self.angular_cmd < 0:
                 self.ForwardBackward_value = ForwardBackward_Neutral
-                self.LeftRight_value = Control_Min
+                self.LeftRight_value = Pivot_Min
                 self.to_hex()
                 continue
 
