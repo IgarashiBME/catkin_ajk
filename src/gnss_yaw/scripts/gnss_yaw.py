@@ -55,8 +55,6 @@ def gnss_yaw(utm):
         # If you get optimal distance and correlation coefficeint, 
         # publish ROS messages with GNSS yaw(quaternion)
         if dist > opt_dist and abs(corr[0,1]) > opt_corr > 0 and straight_str == "straight":
-            if yaw > np.pi:
-                yaw = yaw - 2*np.pi
             imu_msg.header.frame_id = "gnss_yaw"
             imu_msg.header.stamp = rospy.Time.now()
             q = quaternion_from_euler(0, 0, yaw)    # convert to quaternion (it is ROS function)

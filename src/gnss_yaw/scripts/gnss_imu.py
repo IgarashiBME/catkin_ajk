@@ -48,9 +48,9 @@ def imu(imu_msg):
             imu_yaw = imu_yaw + np.pi *2
 
         fusion_yaw = gnss_euler_yaw + imu_yaw - pre_imu_yaw
-        if fusion_yaw < 0:
+        if fusion_yaw < -np.pi:
             fusion_yaw = fusion_yaw + np.pi *2
-        if fusion_yaw > np.pi *2:
+        if fusion_yaw > np.pi:
             fusion_yaw = fusion_yaw - np.pi*2
         
         fusion_q = quaternion_from_euler(0, 0, fusion_yaw)
@@ -95,8 +95,8 @@ def gnss_yaw(gnss_yaw_msg):
     gnss_euler_yaw = gnss_e[2]
 
     # print section
-    if gnss_euler_yaw < 0:
-        gnss_euler_yaw = gnss_euler_yaw + np.pi *2
+    #if gnss_euler_yaw < 0:
+    #    gnss_euler_yaw = gnss_euler_yaw + np.pi *2
 
     print "gnss_yaw", gnss_euler_yaw, gnss_euler_yaw/np.pi *180  
 
