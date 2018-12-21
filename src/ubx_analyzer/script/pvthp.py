@@ -5,6 +5,7 @@ import serial
 import rospy
 import binascii
 import struct
+import numpy as np
 from pyproj import Proj
 
 # ROS message form
@@ -103,7 +104,9 @@ class ublox():
             self.navsat.latitude = latitudeHp
             self.navsat.longitude = longitudeHp
             self.navsat.altitude = heightHp
-            self.navsat.position_covariance = np.array([self.hAcc,0,0,0,self.hAcc,0,0,0,self.vAcc])
+            self.navsat.position_covariance = np.array([self.hAcc/1000.0, 0, 0,
+                                                        0, self.hAcc/1000.0, 0,
+                                                        0, 0, self.vAcc/1000.0])
             self.pub_navsat.publish(self.navsat)
             
             # Publish utm_hp
