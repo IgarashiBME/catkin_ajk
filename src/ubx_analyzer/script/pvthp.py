@@ -100,6 +100,7 @@ class ublox():
             
             #publish navsatfix
             self.navsat.header.stamp = rospy.Time.now()
+            self.navsat.header.frame_id = "gnss_link"
             self.navsat.status.status = self.fix_status
             self.navsat.latitude = latitudeHp
             self.navsat.longitude = longitudeHp
