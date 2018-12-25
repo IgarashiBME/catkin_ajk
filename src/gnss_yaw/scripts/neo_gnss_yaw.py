@@ -18,7 +18,7 @@ x = []
 y = []
 vel = np.array([])
 
-opt_corr = 0.95 # threshold correlation coefficeint
+opt_corr = 0.97 # threshold correlation coefficeint
 opt_dist = 0.4 # threshold distance(unit:meter)
 
 pub_yaw = rospy.Publisher('/gnss_yaw', Imu, queue_size = 10)
