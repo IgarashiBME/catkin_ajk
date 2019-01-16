@@ -77,51 +77,50 @@ class pure_pursuit():
 
             # Confirm the existence of self.x brought by the odom_callback
             try:
-                x = self.x
-                y = self.y
-                front_yaw = self.yaw
+                self.x
+                self.yaw
             except AttributeError:
                 continue
 
             a = np.array([self.waypoint_x[seq], self.waypoint_y[seq]])
-            b = np.array([x, y])
+            b = np.array([self.x, self.y])
             waypoint_dist = np.linalg.norm(b-a)
 
-            if front_yaw < 0:    # yaw angle, 0~2pai radian (0~360 degree)
-                front_yaw = front_yaw + 2*np.pi
-            rear_yaw = front_yaw + np.pi
-            if rear_yaw > 2*np.pi:
-                rear_yaw = rear_yaw -2*np.pi
+            if self.yaw < 0:    # yaw angle, 0~2pai radian (0~360 degree)
+                self.yaw = self.yaw + 2*np.pi
+            self.rear_yaw = self.yaw + np.pi
+            if self.rear_yaw > 2*np.pi:
+                self.rear_yaw = self.rear_yaw -2*np.pi
 
             # forward
-            forward_yaw = np.arctan2(self.waypoint_y[seq]-y, self.waypoint_x[seq]-x)
+            forward_yaw = np.arctan2(self.waypoint_y[seq]-self.y, self.waypoint_x[seq]-self.x)
             if forward_yaw < 0:   # yaw angle, 0~2pai radian (0~360 degree)
                 forward_yaw = forward_yaw + 2*np.pi
 
-            yaw_error_a = forward_yaw -front_yaw
-            yaw_error_b = forward_yaw -(front_yaw+2*np.pi)
-            yaw_error_c = forward_yaw +2*np.pi -front_yaw
+            yaw_error_a = forward_yaw -self.yaw
+            yaw_error_b = forward_yaw -(self.yaw+2*np.pi)
+            yaw_error_c = forward_yaw +2*np.pi -self.yaw
             forward_list = [yaw_error_a, yaw_error_b, yaw_error_c]
             yaw_error = forward_list[np.argmin(np.abs(forward_list))] # min yaw error is selected
 
             # backward
-            backward_yaw = np.arctan2(-self.waypoint_y[seq]+y, -self.waypoint_x[seq]+x)
+            backward_yaw = np.arctan2(-self.waypoint_y[seq]+self.y, -self.waypoint_x[seq]+self.x)
             if backward_yaw < 0:   # yaw angle, 0~2pai radian (0~360 degree)
                 backward_yaw = backward_yaw + 2*np.pi
 
-            back_yaw_error_a = backward_yaw -front_yaw
-            back_yaw_error_b = backward_yaw -(front_yaw+2*np.pi)
-            back_yaw_error_c = backward_yaw +2*np.pi-front_yaw
+            back_yaw_error_a = backward_yaw -self.yaw
+            back_yaw_error_b = backward_yaw -(self.yaw+2*np.pi)
+            back_yaw_error_c = backward_yaw +2*np.pi-self.yaw
             backward_list = [back_yaw_error_a, back_yaw_error_b, back_yaw_error_c]
             back_yaw_error = backward_list[np.argmin(np.abs(backward_list))]
 
             print 
-            print x, y
+            print self.x, self.y
             print self.waypoint_x[seq], self.waypoint_y[seq]
             print "forward:", forward_yaw/np.pi*180
             print "back", backward_yaw/np.pi*180
-            print "front_yaw", front_yaw/np.pi*180
-            print " rear_yaw", rear_yaw/np.pi*180
+            print "front_yaw", self.yaw/np.pi*180
+            print " rear_yaw", self.rear_yaw/np.pi*180
             print "f",forward_list
             print "b",backward_list
             #print "forward:", yaw_error
