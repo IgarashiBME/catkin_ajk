@@ -93,40 +93,33 @@ class pure_pursuit():
             if rear_yaw > 2*np.pi:
                 rear_yaw = rear_yaw -2*np.pi
 
-            # forward
-            forward_yaw = np.arctan2(self.waypoint_y[seq]-y, self.waypoint_x[seq]-x)
-            if forward_yaw < 0:   # yaw angle, 0~2pai radian (0~360 degree)
-                forward_yaw = forward_yaw + 2*np.pi
+            # target_yaw
+            target_yaw = np.arctan2(self.waypoint_y[seq]-y, self.waypoint_x[seq]-x)
+            if target_yaw < 0:   # yaw angle, 0~2pai radian (0~360 degree)
+                target_yaw = target_yaw + 2*np.pi
 
-            yaw_error_a = forward_yaw -front_yaw
-            yaw_error_b = forward_yaw -(front_yaw+2*np.pi)
-            yaw_error_c = forward_yaw +2*np.pi -front_yaw
-            forward_list = [yaw_error_a, yaw_error_b, yaw_error_c]
+            forward_list = [0,0,0]
+            forward_list[0] = target_yaw -front_yaw
+            forward_list[1] = target_yaw -(front_yaw+2*np.pi)
+            forward_list[2] = target_yaw +2*np.pi -front_yaw
             yaw_error = forward_list[np.argmin(np.abs(forward_list))] # min yaw error is selected
 
-            # backward
-            backward_yaw = np.arctan2(-self.waypoint_y[seq]+y, -self.waypoint_x[seq]+x)
-            if backward_yaw < 0:   # yaw angle, 0~2pai radian (0~360 degree)
-                backward_yaw = backward_yaw + 2*np.pi
-
-            back_yaw_error_a = backward_yaw -front_yaw
-            back_yaw_error_b = backward_yaw -(front_yaw+2*np.pi)
-            back_yaw_error_c = backward_yaw +2*np.pi-front_yaw
-            backward_list = [back_yaw_error_a, back_yaw_error_b, back_yaw_error_c]
-            back_yaw_error = backward_list[np.argmin(np.abs(backward_list))]
+            backward_list = [0,0,0]
+            backward_list[0] = target_yaw -rear_yaw
+            backward_list[1] = target_yaw -(rear_yaw +2*np.pi)
+            backward_list[2] = target_yaw +2*np.pi -rear_yaw
+            back_yaw_error = backward_list[np.argmin(np.abs(backward_list))] # min yaw error is selected
 
             print 
             print x, y
             print self.waypoint_x[seq], self.waypoint_y[seq]
-            print "forward:", forward_yaw/np.pi*180
-            print "back", backward_yaw/np.pi*180
-            print "front_yaw", front_yaw/np.pi*180
-            print " rear_yaw", rear_yaw/np.pi*180
+            print "target_yaw:", target_yaw/np.pi*180
+            print " front_yaw:", front_yaw/np.pi*180
+            print "  rear_yaw:", rear_yaw/np.pi*180
             print "f",forward_list
             print "b",backward_list
-            #print "forward:", yaw_error
-            #print "back", back_yaw_error
 
+            # minimal yaw error is selected
             if abs(yaw_error) > abs(back_yaw_error):
                 yaw_error = back_yaw_error
                 velocity = -vel_const
@@ -134,10 +127,7 @@ class pure_pursuit():
                 velocity = vel_const
             target_ang = (2*vel_const*np.sin(yaw_error))/self.la_dist
 
-            #print [self.waypoint_x[seq], self.waypoint_y[seq]]
-            #print self.x, self.y
             print waypoint_dist,target_ang
-            #print yaw_error, back_yaw_error
             #print target_ang
 
             # If the yaw error is large, pivot turn.
