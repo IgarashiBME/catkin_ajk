@@ -18,10 +18,11 @@ from gazebo_msgs.msg import ModelStates
 from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
 
-la_dist_const = 0.6  # look-ahead distance [meter]
+la_dist_const = 1.3  # look-ahead distance [meter]
 spacing = 0.6 # distance between lines 
 vel_const = 0.2 # [meter/sec]
 yaw_tolerance = 40.0/180.0 * np.pi # [radians]
+xy_tolerance = 0.2
 
 class pure_pursuit():
     def __init__(self):
@@ -32,8 +33,6 @@ class pure_pursuit():
         self.y = 0
         self.q = np.empty(4)
         self.yaw = 0
-
-        self.la_dist = la_dist_const
 
         rospy.init_node('pure_pursuit_control')
         rospy.on_shutdown(self.shutdown)
@@ -72,7 +71,7 @@ class pure_pursuit():
         print "shutdown"
 
     def loop(self):
-        seq = 0
+        seq = 3
         while not rospy.is_shutdown():
 
             # Confirm the existence of self.x brought by the odom_callback
@@ -86,6 +85,41 @@ class pure_pursuit():
             a = np.array([self.waypoint_x[seq], self.waypoint_y[seq]])
             b = np.array([x, y])
             waypoint_dist = np.linalg.norm(b-a)
+
+            # calculation of look-ahead target
+            if seq == 0:
+                target_x = self.waypoint_x[seq]
+                target_y = self.waypoint_y[seq]
+            else:
+                x1 = self.waypoint_x[seq-1]
+                x2 = self.waypoint_x[seq]
+                y1 = self.waypoint_y[seq-1]
+                y2 = self.waypoint_y[seq]
+
+                # y = ax+b
+                if abs(x2-x1) < abs(y2-y1):
+                    m = (x2-x1)/(y2-y1)
+                    n = (y2*x1 -y1*x2)/(y2-y1)
+
+                    sign = (x2-x1)/abs(x2-x1)
+                    for i in range(20):
+                        target_y = y1 - abs(m * i) * sign
+                        target_x = m *target_y + n
+                        #print m, (y1 -y2)
+                        print target_x, target_y
+
+                # x = ay+b
+                elif abs(x2-x1) > abs(y2-y1):
+                    m = (y2-y1)/(x2-x1)
+                    n = (x2*y1 -x1*y2)/(x2-x1)
+
+                    sign = (y2-y1)/abs(y2-y1)
+                    for i in range(20):
+                        target_x = x1 - abs(m * i) * sign
+                        target_y = m *target_x + n
+                        #print m, (x1 -x2)
+                        print target_x, target_y
+            exit()
 
             if front_yaw < 0:    # yaw angle, 0~2pai radian (0~360 degree)
                 front_yaw = front_yaw + 2*np.pi
@@ -140,13 +174,12 @@ class pure_pursuit():
             self.pub.publish(self.twist)
 
             # when reaching the look-ahead distance, read the next waypoint.
-            if waypoint_dist < self.la_dist:
+            if waypoint_dist < xy_torelance:
                 seq = seq + 1
-                self.la_dist = la_dist_const
-                self.pubstr.publish("straight")
             if seq >= len(self.waypoint_x):
                 self.twist.linear.x = 0
-                self.twist.angular.z = 0                
+                self.twist.angular.z = 0
+                self.pub.publish(self.twist)                
                 break
             time.sleep(0.01)
 
