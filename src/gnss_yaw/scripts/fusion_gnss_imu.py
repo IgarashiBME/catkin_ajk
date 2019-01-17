@@ -23,7 +23,6 @@ class fusion():
         self.pub = rospy.Publisher('/gnss_imu', Odometry, queue_size = 10)
         self.gnss_imu = Odometry()
 
-        self.pre_seq = 0
         rospy.spin()
 
     def imu(self, msg):
@@ -33,37 +32,54 @@ class fusion():
                                        msg.orientation.w))
         # 0~2 pi radian
         if imu_e[2] < 0:
-            self.imu_yaw = imu_e[2] + 2*np.pi
+            imu_yaw = imu_e[2] + 2*np.pi
         else:
-            self.imu_yaw = imu_e[2]
+            imu_yaw = imu_e[2]
+
+        try:
+            self.imu_diff = imu_yaw - self.pre_imu_yaw
+        except AttributeError:
+            pass
+
+        self.pre_imu_yaw = imu_yaw
+
+        # add the diffrence of imu_yaw to gnss_yaw
+        try:
+            self.fusion_yaw = self.fusion_yaw + self.imu_diff
+            print self.fusion_yaw/np.pi*180
+            if self.fusion_yaw < -np.pi:
+                self.fusion_yaw = self.fusion_yaw + np.pi *2
+            if self.fusion_yaw > np.pi:
+                self.fusion_yaw = self.fusion_yaw - np.pi*2
+            fusion_q = quaternion_from_euler(0, 0, self.fusion_yaw)
+
+            self.gnss_imu.pose.pose.position.x = self.utm_x
+            self.gnss_imu.pose.pose.position.y = self.utm_y
+            self.gnss_imu.pose.pose.position.z = self.utm_z
+            self.gnss_imu.pose.pose.orientation.x = fusion_q[0]
+            self.gnss_imu.pose.pose.orientation.y = fusion_q[1]
+            self.gnss_imu.pose.pose.orientation.z = fusion_q[2]
+            self.gnss_imu.pose.pose.orientation.w = fusion_q[3]
+
+            self.pub.publish(self.gnss_imu)
+        except AttributeError:
+            pass
 
     def gnss_yaw(self, msg):
-        self.gnss_yaw_seq = msg.header.seq
         gnss_e = euler_from_quaternion((msg.orientation.x,
                                         msg.orientation.y,
                                         msg.orientation.z,
                                         msg.orientation.w))
         # 0~2 pi radian
         if gnss_e[2] < 0:
-            self.gnss_yaw = gnss_e[2] + 2*np.pi
+            self.fusion_yaw = gnss_e[2] + 2*np.pi
         else:
-            self.gnss_yaw = gnss_e[2]
+            self.fusion_yaw = gnss_e[2]
 
     def utm(self, msg):
         self.utm_x = msg.pose.pose.position.x
         self.utm_y = msg.pose.pose.position.y
         self.utm_z = msg.pose.pose.position.z
-
-    def loop():
-        while not rospy.is_shutdown():
-            try:
-                self.gnss_yaw
-                self.gnss_yaw_seq
-            except AttributeError:
-                continue
-
-            if pre_seq != self.gnss_yaw_seq
-                fusion_yaw = self.gnss_yaw
 
     def shutdown(self):
         rospy.loginfo("fusion_gnss_imu_node was terminated")
