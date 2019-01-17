@@ -265,7 +265,7 @@ if __name__ == '__main__':
             imu_data.linear_acceleration_covariance[0] = -1
             imu_data.angular_velocity.x = float(st.unpack('h', st.pack('BB', buf[12], buf[13]))[0]) / gyr_fact
             imu_data.angular_velocity.y = float(st.unpack('h', st.pack('BB', buf[14], buf[15]))[0]) / gyr_fact
-            imu_data.angular_velocity.z = -float(st.unpack('h', st.pack('BB', buf[16], buf[17]))[0]) / gyr_fact
+            imu_data.angular_velocity.z = float(st.unpack('h', st.pack('BB', buf[16], buf[17]))[0]) / gyr_fact
             imu_data.angular_velocity_covariance[0] = -1
             pub_data.publish(imu_data)
 
