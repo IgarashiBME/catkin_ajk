@@ -39,8 +39,8 @@ class pure_pursuit():
         rospy.on_shutdown(self.shutdown)
 
         # ROS callback function, receive /odom mesage
-        #rospy.Subscriber('/gnss_imu', Odometry, self.odom_callback, queue_size = 1)
-        rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
+        rospy.Subscriber('/gnss_imu', Odometry, self.odom_callback, queue_size = 1)
+        #rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
         self.pub = rospy.Publisher('/sim_ajk/diff_drive_controller/cmd_vel', Twist, queue_size = 1)
         self.twist = Twist()
         self.pubstr = rospy.Publisher('/straight_str', String, queue_size = 1)
@@ -159,7 +159,7 @@ class pure_pursuit():
     def load_waypoint(self):
         x, y = load_waypoint.load_csv()
         self.waypoint_x, self.waypoint_y, self.waypoint_goal = load_waypoint.interpolation(x, y, spacing)
-        #print self.waypoint_x, self.waypoint_y
+        print x, y
         #print self.waypoint_goal
     
 if __name__ == '__main__':
