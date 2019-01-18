@@ -30,8 +30,8 @@ CommandLength = 36            # command of sanyokiki weeder is 36 length.
 
 Control_Max = 739
 Control_Min = 281
-Pivot_Max = 640
-Pivot_Min = 332
+Pivot_Max = 700
+Pivot_Min = 310
 LR_Opt = 48
 Opt_Angular = 0.4  # [radian/sec]
 SleepConstant = 0.050 # second
@@ -149,7 +149,8 @@ class controller():
                 if len(hist) > 7:
                     hist.pop()
                 ig = self.i(hist, self.angular_cmd) 
-                power = pg+ig
+                #power = pg+ig
+                power = self.angular_cmd
                 self.pub_pi.publish(str(rospy.Time.now()) +"," +str(pg) +"," +str(ig))
 
                 if power > Opt_Angular:
@@ -164,8 +165,9 @@ class controller():
                     self.LeftRight_value = LeftRight_Neutral +LR_power
                     self.to_hex()
                 elif self.linear_cmd <= 0:
+                    #print "back"
                     self.ForwardBackward_value = Control_Min
-                    self.LeftRight_value = LeftRight_Neutral +LR_power
+                    self.LeftRight_value = LeftRight_Neutral -LR_power
                     self.to_hex()
             else:
                 self.ForwardBackward_value = ForwardBackward_Neutral
