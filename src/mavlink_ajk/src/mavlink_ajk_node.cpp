@@ -39,7 +39,6 @@
 using namespace std;
 
 uint64_t microsSinceEpoch();
-int CheckReceivable(int fd);
 
 class Listener{
 public:
@@ -64,13 +63,6 @@ void Listener::gnss_callback(const mavlink_ajk::NavPVT::ConstPtr& msg){
 }
 
 int main(int argc, char **argv){
-    ros::init(argc, argv, "mavlink_node");
-    ROS_INFO("fake fcu start");
-    ros::NodeHandle n;
-
-    Listener listener;
-    ros::Subscriber sub = n.subscribe("/navpvt", 10, &Listener::gnss_callback, &listener);
-    
     char target_ip[100];
 	
     float position[6] = {};
@@ -90,8 +82,7 @@ int main(int argc, char **argv){
     int pre_mission_seq = -1;
     uint64_t pre_time = 0;
     int time_interval = 900000; //0.9 second
-    bool armed_flag;
-    armed_flag = 0;
+    int mav_mode = MAV_MODE_GUIDED_DISARMED;
 
     // Change the target ip if parameter was given
     strcpy(target_ip, "127.0.0.1");
@@ -124,6 +115,15 @@ int main(int argc, char **argv){
     gcAddr.sin_port = htons(14550);
 
     pre_time = microsSinceEpoch();
+
+    /* ros intializer */
+    ros::init(argc, argv, "mavlink_node");
+    ROS_INFO("fake fcu start");
+    ros::NodeHandle n;
+
+    Listener listener;
+    ros::Subscriber sub = n.subscribe("/navpvt", 10, &Listener::gnss_callback, &listener);
+
     while (ros::ok()){
         ros::spinOnce();
 
@@ -131,28 +131,19 @@ int main(int argc, char **argv){
         if (microsSinceEpoch() - pre_time > time_interval){
             /* time print */
             //std::cout << microsSinceEpoch() - pre_time << std::endl;
-            std::cout << armed_flag << std::endl;
+
             /*Send Heartbeat */
             // https://github.com/mavlink/c_library_v1/blob/3da9db30f3ea7fe8fa8241a74ab343b9971e7e9a/common/common.h#L166
             // mavlink_msg_heartbeat_pack(1, 1, &mavmsg, type, autopilot, 
             //                           base_mode, custom_mode, system_status);
             //mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_QUADROTOR, MAV_AUTOPILOT_PX4, 
             //                           MAV_MODE_GUIDED_ARMED, 3, MAV_STATE_STANDBY);
-            if (armed_flag == 0){
-                mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_GROUND_ROVER, MAV_AUTOPILOT_ARDUPILOTMEGA, 
-                                           MAV_MODE_GUIDED_DISARMED, 3, MAV_STATE_STANDBY);
+            mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_GROUND_ROVER, MAV_AUTOPILOT_ARDUPILOTMEGA, 
+                                       mav_mode, 3, MAV_STATE_STANDBY);
 
-                len = mavlink_msg_to_send_buffer(buf, &mavmsg);
-                bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
-            }
-            else{
-                mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_GROUND_ROVER, MAV_AUTOPILOT_ARDUPILOTMEGA, 
-                                           MAV_MODE_GUIDED_ARMED, 3, MAV_STATE_STANDBY);
+            len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+            bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 
-                len = mavlink_msg_to_send_buffer(buf, &mavmsg);
-                bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
-            }
-		
             /* Send Status */
             mavlink_msg_sys_status_pack(1, 200, &mavmsg, 0, 0, 0, 500, 11000, -1, -1, 0, 0, 0, 0, 0, 0);
             len = mavlink_msg_to_send_buffer(buf, &mavmsg);
@@ -260,9 +251,6 @@ int main(int argc, char **argv){
                 // decode SET_MODE message
                 mavlink_msg_set_mode_decode(&mavmsg, &mavsm);
                 printf("%i, %i, %i", mavsm.custom_mode, mavsm.target_system, mavsm.base_mode);
-                if (mavsm.base_mode == 89){
-                    armed_flag = 1;
-                }
             }
 
             /* COMMAND_LONG decoder */
@@ -272,6 +260,34 @@ int main(int argc, char **argv){
                 // decode SET_MODE message
                 mavlink_msg_command_long_decode(&mavmsg, &mavcl);
                 printf("%i, %f", mavcl.command, mavcl.param1);
+
+                /* Send COMMAND_ACK */ 
+                if (mavcl.command == MAV_CMD_COMPONENT_ARM_DISARM && mavcl.param1 == 1.0){
+                    mavlink_msg_command_ack_pack(1, 200, &mavmsg, MAV_CMD_COMPONENT_ARM_DISARM,
+                                                 MAV_RESULT_ACCEPTED);
+                    len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+                    bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+                    mav_mode = MAV_MODE_GUIDED_ARMED;
+                }
+                if (mavcl.command == MAV_CMD_COMPONENT_ARM_DISARM && mavcl.param1 == 0.0){
+                    mavlink_msg_command_ack_pack(1, 200, &mavmsg, MAV_CMD_COMPONENT_ARM_DISARM,
+                                                 MAV_RESULT_ACCEPTED);
+                    len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+                    bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+                    mav_mode = MAV_MODE_GUIDED_DISARMED;
+                }
+                if (mavcl.command == MAV_CMD_REQUEST_PROTOCOL_VERSION){
+                    mavlink_msg_command_ack_pack(1, 200, &mavmsg, mavcl.command,
+                                                 MAV_RESULT_ACCEPTED);
+                    len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+                    bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+                }
+                if (mavcl.command == MAV_CMD_MISSION_START){
+                    mavlink_msg_command_ack_pack(1, 200, &mavmsg, mavcl.command,
+                                                 MAV_RESULT_ACCEPTED);
+                    len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+                    bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+                }
             }                
             //printf("\n");
         }
