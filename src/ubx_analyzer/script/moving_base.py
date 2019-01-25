@@ -11,7 +11,7 @@ import numpy as np
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from sensor_msgs.msg import Imu
-from ubx_analyzer.msg import NAV-RELPOSNED
+from ubx_analyzer.msg import RELPOSNED
 
 # ROS function
 from tf.transformations import quaternion_from_euler
@@ -127,7 +127,7 @@ class ublox():
             heading_q = quaternion_from_euler(0, 0, heading)
 
             # Publish heading with ROS Imu format
-            if fix_status = 2:
+            if fix_status == 2:
                 self.moving_base.header.frame_id = "moving_base"
                 self.moving_base.header.stamp = rospy.Time.now()
                 self.moving_base.orientation.x = heading_q[0]

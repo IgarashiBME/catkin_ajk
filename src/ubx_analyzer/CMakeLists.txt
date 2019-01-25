@@ -51,6 +51,7 @@ find_package(catkin REQUIRED COMPONENTS
    FILES
    NavPVT.msg
    UTMHP.msg
+   RELPOSNED.msg
  )
 
 ## Generate services in the 'srv' folder

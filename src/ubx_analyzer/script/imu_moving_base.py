@@ -77,7 +77,7 @@ class fusion():
         else:
             self.fusion_yaw = gnss_e[2]
 
-    def utm(self, msg):
+    def utm_hp(self, msg):
         self.utm_x = msg.utm_easting
         self.utm_y = msg.utm_northing
         self.utm_z = msg.heightHp
