@@ -96,7 +96,7 @@ class ublox():
             # UTM
             utmzone = int((longitude + 180)/6) +1   # If you are on the specific location, can't be calculated. 
             convertor = Proj(proj='utm', zone=utmzone, ellps='WGS84')
-            x, y = convertor(longitudeHp, latitudeHp)
+            self.x, self.y = convertor(longitudeHp, latitudeHp)
             
             #publish navsatfix
             self.navsat.header.stamp = rospy.Time.now()
@@ -116,8 +116,8 @@ class ublox():
             self.utm_hp.fix_status = self.fix_status
             self.utm_hp.lonHp = longitudeHp
             self.utm_hp.latHp = latitudeHp
-            self.utm_hp.utm_easting = x
-            self.utm_hp.utm_northing = y
+            self.utm_hp.utm_easting = self.x
+            self.utm_hp.utm_northing = self.y
             self.utm_hp.heightHp = heightHp
             self.utm_hp.hMSL = self.hMSL
             self.utm_hp.hAcc = self.hAcc
@@ -186,14 +186,14 @@ class ublox():
             self.pub_gpst.publish(str(rospy.Time.now()) +"," +str(gpst))
 
             # publish UTM coordinate
-            utmzone = int((longitude + 180)/6) +1   # If you are on the specific location, can't be calculated. 
-            convertor = Proj(proj='utm', zone=utmzone, ellps='WGS84')
-            x, y = convertor(longitude, latitude)
-            self.utm.header.stamp = rospy.Time.now()
-            self.utm.pose.pose.position.x = x
-            self.utm.pose.pose.position.y = y
-            self.utm.pose.pose.position.z = height
-            self.pub_utm.publish(self.utm)
+            try:
+                self.utm.header.stamp = rospy.Time.now()
+                self.utm.pose.pose.position.x = self.x
+                self.utm.pose.pose.position.y = self.y
+                self.utm.pose.pose.position.z = height
+                self.pub_utm.publish(self.utm)
+            except AttributeError:
+                pass
 
             # publish GNSS status
             self.navpvt_data.iTOW = gpst
