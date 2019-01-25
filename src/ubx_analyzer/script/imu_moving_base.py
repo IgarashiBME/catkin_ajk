@@ -6,6 +6,7 @@ import numpy as np
 
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
+from ubx_analyzer.msg import UTMHP
 
 from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
@@ -17,11 +18,11 @@ class fusion():
 
         # ROS callback function
         rospy.Subscriber('/imu/data', Imu, self.imu)
-        rospy.Subscriber('/moving_base', Imu, self.gnss_yaw)
-        rospy.Subscriber('/utm', Odometry, self.utm)
+        rospy.Subscriber('/moving_base', Imu, self.moving_base)
+        rospy.Subscriber('/utm_hp', UTMHP, self.utm_hp)
         # ROS publish function
-        self.pub = rospy.Publisher('/moving_base_imu', Odometry, queue_size = 1)
-        self.gnss_imu = Odometry()
+        self.pub = rospy.Publisher('/imu_moving_base', Odometry, queue_size = 1)
+        self.imu_moving_base = Odometry()
 
         rospy.spin()
 
@@ -36,11 +37,11 @@ class fusion():
         else:
             imu_yaw = imu_e[2]
 
+        # calculate diffrence of imu yaw with current and previous sequence
         try:
             self.imu_diff = imu_yaw - self.pre_imu_yaw
         except AttributeError:
             pass
-
         self.pre_imu_yaw = imu_yaw
 
         # add the diffrence of imu_yaw to gnss_yaw
@@ -61,11 +62,11 @@ class fusion():
             self.gnss_imu.pose.pose.orientation.z = fusion_q[2]
             self.gnss_imu.pose.pose.orientation.w = fusion_q[3]
 
-            self.pub.publish(self.gnss_imu)
+            self.pub.publish(self.imu_moving_base)
         except AttributeError:
             pass
 
-    def gnss_yaw(self, msg):
+    def moving_base(self, msg):
         gnss_e = euler_from_quaternion((msg.orientation.x,
                                         msg.orientation.y,
                                         msg.orientation.z,
@@ -77,9 +78,9 @@ class fusion():
             self.fusion_yaw = gnss_e[2]
 
     def utm(self, msg):
-        self.utm_x = msg.pose.pose.position.x
-        self.utm_y = msg.pose.pose.position.y
-        self.utm_z = msg.pose.pose.position.z
+        self.utm_x = msg.utm_easting
+        self.utm_y = msg.utm_northing
+        self.utm_z = msg.heightHp
 
     def shutdown(self):
         rospy.loginfo("fusion_gnss_imu_node was terminated")
