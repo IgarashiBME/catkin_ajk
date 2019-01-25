@@ -13,6 +13,10 @@ from std_msgs.msg import String
 from sensor_msgs.msg import Imu
 from ubx_analyzer.msg import NAV-RELPOSNED
 
+# ROS function
+from tf.transformations import quaternion_from_euler
+from tf.transformations import euler_from_quaternion
+
 Header_A = "b5"  #Ublox GNSS receiver, UBX protocol header
 Header_B = "62"  #Ublox GNSS receiver, UBX protocol header
 NAV_ID = "01"    #UBX-NAV-RELPOSNED header(0x01 0x3c)
@@ -61,7 +65,7 @@ class ublox():
         #print binascii.b2a_hex(Data)
         if Data.__len__() == NAV_RELPOSNED_Length:
             # GPS time of week
-            gpst = float(struct.unpack('I', struct.pack('BBBB', Data[6], Data[7],
+            iTOW = float(struct.unpack('I', struct.pack('BBBB', Data[6], Data[7],
                                        Data[8], Data[9]))[0])
 
             # relative position vector (unit: centi-meter)
@@ -88,25 +92,59 @@ class ublox():
             accD = float(struct.unpack('I', struct.pack('BBBB', Data[34], Data[35],
                                                         Data[36], Data[37]))[0])
 
-            # calculate heading from 
+            # RTK fix flag
+            fix_flag = int(struct.unpack('B', struct.pack('B', NAV_PVT_Data[23]))[0])
+            fix_flag = bin(fix_flag).zfill(8)
+            if fix_flag[3:5] == "10":
+                fix_status = 2    # when rtk was fixed, publish 2
+                fix_str = "RTK fixed solution"
+            elif fix_flag[3:5] == "01":
+                fix_status= 1     # when rtk was float, publish 1
+                fix_str = "RTK float solution"
+            else:
+                fix_status= 0
+                fix_str = "No carrier phase renge solution"
+
+            # calculate heading using the NE component
             heading = np.arctan2((relPosN+relPosHPN), (relPosE+relPosHPE))
 
             # Publish RELPOSNED
-            self.relposned.iTOW = gpst
-            self.relposned.fix_status = self.fix_status
+            self.relposned.iTOW = iTOW
+            self.relposned.fix_status = fix_status
             self.relposned.relPosN = relPosN
             self.relposned.relPosE = relPosE
             self.relposned.relPosD = relPosD
-            self.relposned.relPosHPN = relPosN
-            self.relposned.relPosHPE = relPosE
-            self.relposned.relPosHPD = relPosD
+            self.relposned.relPosHPN = relPosHPN
+            self.relposned.relPosHPE = relPosHPE
+            self.relposned.relPosHPD = relPosHPD
             self.relposned.accN = accN
             self.relposned.accE = accE
             self.relposned.accD = accD
+            self.relposned.heading = heading
+            self.pub_relposned(self.relposned)
 
-            #print gpst
-            #print 
-            #print    
+            # convert to quaternion
+            heading_q = quaternion_from_euler(0, 0, heading)
+
+            # Publish heading with ROS Imu format
+            if fix_status = 2:
+                self.moving_base.header.frame_id = "moving_base"
+                self.moving_base.header.stamp = rospy.Time.now()
+                self.moving_base.orientation.x = heading_q[0]
+                self.moving_base.orientation.y = heading_q[1]
+                self.moving_base.orientation.z = heading_q[2]
+                self.moving_base.orientation.w = heading_q[3]
+                self.pub_relposned.publish(self.moving_base)
+
+            print iTOW
+            print "N:",relPosN, "E:",relPosE, "D:",relPosD
+            print "HPN:",relPosHPN, "HPE:",relPosHPE, "HPD:",relPosHPD
+
+            # heading debug space
+            efq_heading = euler_from_quaternion(heading_q)
+            print "arctan2_heading:", heading
+            print "    efq_heading:", efq_heading
+            print
 
     def shutdown(self):
         rospy.loginfo("ublox analyzer node was terminated") 
