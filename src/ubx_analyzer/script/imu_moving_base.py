@@ -83,7 +83,7 @@ class fusion():
         self.utm_z = msg.heightHp
 
     def shutdown(self):
-        rospy.loginfo("fusion_gnss_imu_node was terminated")
+        rospy.loginfo("fusion_imu_moving_base_node was terminated")
 
 if __name__ == '__main__':
     f = fusion()
