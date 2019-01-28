@@ -1,0 +1,8 @@
+<launch>
+  <node pkg="ubx_analyzer" type="pvthp.py" name="pvthp" output="screen">
+  </node>
+  <node pkg="moving_base" type="moving_base.py" name="moving_base" output="screen">
+  </node>
+</launch>
+
+
