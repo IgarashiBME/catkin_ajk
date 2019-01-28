@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # coding:utf-8
 
+# north right rover, left base
+
 import serial
 import rospy
 import binascii
@@ -108,6 +110,10 @@ class ublox():
 
             # calculate heading using the NE component
             heading = np.arctan2((relPosN+relPosHPN), (relPosE+relPosHPE))
+            #heading = heading +np.pi/2
+            #if heading > np.pi:
+            #    heading = heading - 2*np.pi
+            #heading = np.arctan2((relPosE+relPosHPE), (relPosN+relPosHPN))
 
             # Publish RELPOSNED
             self.relposned.iTOW = iTOW
@@ -138,13 +144,14 @@ class ublox():
                 self.pub_moving_base.publish(self.moving_base)
 
             print iTOW
+            print fix_status, fix_str
             print "N:",relPosN, "E:",relPosE, "D:",relPosD
             print "HPN:",relPosHPN, "HPE:",relPosHPE, "HPD:",relPosHPD
 
             # heading debug space
             efq_heading = euler_from_quaternion(heading_q)
-            print "arctan2_heading:", heading
-            print "    efq_heading:", efq_heading[2]
+            print "arctan2_heading:", heading/np.pi *180
+            print "    efq_heading:", efq_heading[2]/np.pi *180
             print
 
     def shutdown(self):
