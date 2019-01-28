@@ -144,7 +144,7 @@ class ublox():
             # heading debug space
             efq_heading = euler_from_quaternion(heading_q)
             print "arctan2_heading:", heading
-            print "    efq_heading:", efq_heading
+            print "    efq_heading:", efq_heading[2]
             print
 
     def shutdown(self):
