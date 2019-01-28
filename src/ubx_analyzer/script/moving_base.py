@@ -40,13 +40,13 @@ class ublox():
         # ROS publisher initialize
         self.pub_moving_base = rospy.Publisher('moving_base', Imu, queue_size = 1)
         self.moving_base = Imu()
-        self.pub_relposned = rospy.Publisher('relposned', NAV-RELPOSNED, queue_size = 1)
-        self.relposned = NAV-RELPOSNED()
+        self.pub_relposned = rospy.Publisher('relposned', RELPOSNED, queue_size = 1)
+        self.relposned = RELPOSNED()
 
     def loop(self):
         # searching for UBX-NAV-Class headers
         while not rospy.is_shutdown():
-            Data = binascii.b2a_hex(self.ser.read())
+            Data = binascii.b2a_hex(self.ser.read())                
 
             if Data == Header_A:
                 Data = binascii.b2a_hex(self.ser.read())
@@ -62,7 +62,7 @@ class ublox():
                             #print binascii.b2a_hex(NAV_RELPOSENED_Data)
                             self.RELPOSNED_Function(NAV_RELPOSENED_Data)
 
-    def HPPOSLLH_Function(self, Data):
+    def RELPOSNED_Function(self, Data):
         #print binascii.b2a_hex(Data)
         if Data.__len__() == NAV_RELPOSNED_Length:
             # GPS time of week
@@ -94,7 +94,7 @@ class ublox():
                                                         Data[36], Data[37]))[0])
 
             # RTK fix flag
-            fix_flag = int(struct.unpack('B', struct.pack('B', NAV_PVT_Data[23]))[0])
+            fix_flag = int(struct.unpack('B', struct.pack('B', Data[38]))[0])
             fix_flag = bin(fix_flag).zfill(8)
             if fix_flag[3:5] == "10":
                 fix_status = 2    # when rtk was fixed, publish 2
@@ -122,7 +122,7 @@ class ublox():
             self.relposned.accE = accE
             self.relposned.accD = accD
             self.relposned.heading = heading
-            self.pub_relposned(self.relposned)
+            self.pub_relposned.publish(self.relposned)
 
             # convert to quaternion
             heading_q = quaternion_from_euler(0, 0, heading)
@@ -135,7 +135,7 @@ class ublox():
                 self.moving_base.orientation.y = heading_q[1]
                 self.moving_base.orientation.z = heading_q[2]
                 self.moving_base.orientation.w = heading_q[3]
-                self.pub_relposned.publish(self.moving_base)
+                self.pub_moving_base.publish(self.moving_base)
 
             print iTOW
             print "N:",relPosN, "E:",relPosE, "D:",relPosD

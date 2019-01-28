@@ -5,7 +5,7 @@
   </node>
 
   <arg name="mb_config_file" default="$(find ubx_analyzer)/config/moving_base_rover.yaml"/> 
-  <node pkg="moving_base" type="moving_base.py" name="moving_base" output="screen">
+  <node pkg="ubx_analyzer" type="moving_base.py" name="moving_base" output="screen">
     <rosparam file="$(arg mb_config_file)" command="load"/>
   </node>
 </launch>
