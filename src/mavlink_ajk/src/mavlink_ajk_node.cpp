@@ -34,7 +34,8 @@
 /* mavlink library */
 #include "mavlink.h"
 
-#define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
+//#define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
+#define BUFFER_LENGTH 1025
 
 using namespace std;
 
@@ -125,8 +126,6 @@ int main(int argc, char **argv){
     ros::Subscriber sub = n.subscribe("/navpvt", 10, &Listener::gnss_callback, &listener);
 
     while (ros::ok()){
-        ros::spinOnce();
-
         /* time interval */        
         if (microsSinceEpoch() - pre_time > time_interval){
             /* time print */
@@ -182,7 +181,7 @@ int main(int argc, char **argv){
         /* receiver section */
         memset(buf, 0, BUFFER_LENGTH);
         recsize = recvfrom(sock, (void *)buf, BUFFER_LENGTH, 0, (struct sockaddr *)&gcAddr, &fromlen);
-
+        printf("Bytes Received: %d\n", (int)recsize);
         if (recsize > 0){
             // Something received - print out all bytes and parse packet
             mavlink_message_t mavmsg;
@@ -292,7 +291,8 @@ int main(int argc, char **argv){
             //printf("\n");
         }
         memset(buf, 0, BUFFER_LENGTH);
-        usleep(10000); // Sleep 10 msec
+        usleep(1000000); // Sleep 10 msec
+        ros::spinOnce();
     }
 }
 
