@@ -27,6 +27,7 @@ NAV_HPPOSLLH_Length = 36
 class ublox():
     def __init__(self):
         # Set up serial:
+        port = rospy.get_param('~port', '/dev/ttyUSB0')
         self.ser = serial.Serial(
             port='/dev/serial/by-id/usb-u-blox_AG_-_www.u-blox.com_u-blox_GNSS_receiver-if00',\
             baudrate=38400,\

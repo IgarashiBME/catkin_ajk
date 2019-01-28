@@ -1,0 +1,2 @@
+# USB port
+port: /dev/serial/by-path/pci-0000:00:14.0-usb-0:2.3:1.0

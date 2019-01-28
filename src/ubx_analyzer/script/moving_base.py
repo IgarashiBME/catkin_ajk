@@ -26,8 +26,9 @@ NAV_RELPOSNED_Length = 40    #length of UBX-NAV-RELPOSNED hex data
 class ublox():
     def __init__(self):
         # Set up serial:
+        port = rospy.get_param('~port', '/dev/ttyUSB0')
         self.ser = serial.Serial(
-            port='/dev/serial/by-id/usb-u-blox_AG_-_www.u-blox.com_u-blox_GNSS_receiver-if00',\
+            port,\
             baudrate=38400,\
             parity=serial.PARITY_NONE,\
             stopbits=serial.STOPBITS_ONE,\
