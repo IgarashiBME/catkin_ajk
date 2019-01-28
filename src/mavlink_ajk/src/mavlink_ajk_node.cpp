@@ -84,6 +84,7 @@ int main(int argc, char **argv){
     uint64_t pre_time = 0;
     int time_interval = 900000; //0.9 second
     int mav_mode = MAV_MODE_GUIDED_DISARMED;
+    int custom_mode = 0;
 
     // Change the target ip if parameter was given
     strcpy(target_ip, "127.0.0.1");
@@ -138,8 +139,7 @@ int main(int argc, char **argv){
             //mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_QUADROTOR, MAV_AUTOPILOT_PX4, 
             //                           MAV_MODE_GUIDED_ARMED, 3, MAV_STATE_STANDBY);
             mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_GROUND_ROVER, MAV_AUTOPILOT_ARDUPILOTMEGA, 
-                                       mav_mode, 3, MAV_STATE_STANDBY);
-
+                                       mav_mode, custom_mode, MAV_STATE_STANDBY);
             len = mavlink_msg_to_send_buffer(buf, &mavmsg);
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 
@@ -250,6 +250,7 @@ int main(int argc, char **argv){
                 // decode SET_MODE message
                 mavlink_msg_set_mode_decode(&mavmsg, &mavsm);
                 printf("%i, %i, %i", mavsm.custom_mode, mavsm.target_system, mavsm.base_mode);
+                custom_mode = mavsm.custom_mode;
             }
 
             /* COMMAND_LONG decoder */
