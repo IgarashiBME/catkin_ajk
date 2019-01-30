@@ -20,13 +20,19 @@ from tf.transformations import euler_from_quaternion
 
 look_ahead_dist = 1.3  # look-ahead distance [meter]
 spacing = 0.6       # distance between lines 
-vel_const = 0.2     # [meter/sec]
 xy_tolerance = 0.2  # [meter]
 yaw_tolerance = 40.0/180.0 * np.pi # [radians]
+
+# translation value
+forward_const = 1
+backward_const = -1
 
 # gain
 kp = 0.7
 kd = 0.7
+
+# frequency [Hz]
+frequency = 20
 
 class look_ahead():
     def __init__(self):
@@ -36,8 +42,8 @@ class look_ahead():
         self.x = 0
         self.y = 0
         self.q = np.empty(4)
-        self.yaw = 0
-        self.pre_steering = 0
+        self.yaw = np.pi/2
+        self.pre_steering_ang = 0
 
         rospy.init_node('look_ahead_following')
         rospy.on_shutdown(self.shutdown)
@@ -114,16 +120,23 @@ class look_ahead():
             wp_y_tf = wp_x_adj*np.sin(-tf_angle) + wp_y_adj*np.cos(-tf_angle)
 
             # coordinate transformation of own position
+            own_x_tf = own_x_adj*np.cos(-tf_angle) - own_y_adj*np.sin(-tf_angle)
+            own_y_tf = own_x_adj*np.sin(-tf_angle) + own_y_adj*np.cos(-tf_angle)
+
+
+            # coordinate transformation of own position
             front_yaw_tf = front_yaw - tf_angle
-            if front_yaw_tf < 0:
+            if front_yaw_tf < -np.pi:
                 front_yaw_tf = front_yaw_tf + 2*np.pi
+            if front_yaw_tf > np.pi:
+                front_yaw_tf = front_yaw_tf - 2*np.pi
             rear_yaw_tf = front_yaw_tf + np.pi
-            if rear_yaw_tf > 2*np.pi:
+            if rear_yaw_tf > np.pi:
                 rear_yaw_tf = rear_yaw_tf -2*np.pi
 
             # calculate the distance of target line
             u = np.array([wp_x_tf, wp_y_tf])
-            v = np.array([own_x, own_y])
+            v = np.array([own_x_tf, own_y_tf])
             d = np.cross(u, v) / np.linalg.norm(u)
 
             # calculate the target-angle(bearing) using look-ahead distance
@@ -142,29 +155,30 @@ class look_ahead():
             rear_list[2] = bearing -rear_yaw_tf +2*np.pi 
             rear_steering_ang = rear_list[np.argmin(np.abs(rear_list))] # min yaw error is selected
 
-            if abs(front_yaw_error) > abs(rear_yaw_error):
+            if abs(front_steering_ang) > abs(rear_steering_ang):
                 steering_ang = rear_steering_ang
-                velocity = -vel_const
-            elif abs(front_yaw_error) < abs(rear_yaw_error):
+                translation = backward_const
+            elif abs(front_steering_ang) < abs(rear_steering_ang):
                 steering_ang = front_steering_ang
-                velocity = vel_const
+                translation = forward_const
 
             # calculate the steering_value
-            steering_value = kp*steering_ang -kd*pre_steering_ang
-            pre_steering_ang = steering_ang
+            steering_value = kp*steering_ang -kd*self.pre_steering_ang
+            self.pre_steering_ang = steering_ang
 
-            print wp_x_adj, wp_y_adj, tf_angle/np.pi*180
-            print "transform_x:", wp_x_tf, "transform_y:", wp_y_tf
+            #print wp_x_adj, wp_y_adj, tf_angle/np.pi*180
+            print "   transform_wx:", wp_x_tf, "   transform_wy:", wp_y_tf
+            print "transform_own_x:", own_x_tf, "transform_own_y:", own_y_tf
             print "target_line_error:", d
 
             # If the yaw error is large, pivot turn.
-            #if abs(yaw_error) > yaw_tolerance:
-            #    self.twist.linear.x = 0
-            #    self.twist.angular.z = target_ang
-            #else:
-            #    self.twist.linear.x = velocity
-            #    self.twist.angular.z = target_ang
-            #self.pub.publish(self.twist)
+            if abs(steering_ang) > yaw_tolerance:
+                self.twist.linear.x = 0
+                self.twist.angular.z = steering_value
+            else:
+                self.twist.linear.x = translation
+                self.twist.angular.z = steering_value
+            self.pub.publish(self.twist)
 
             # when reaching the look-ahead distance, read the next waypoint.
             if waypoint_dist < xy_tolerance:
@@ -174,7 +188,7 @@ class look_ahead():
                 self.twist.linear.x = 0
                 self.twist.angular.z = 0                
                 break
-            time.sleep(0.01)
+            time.sleep(1/frequency)
 
     # load waypoint list
     def load_waypoint(self):
