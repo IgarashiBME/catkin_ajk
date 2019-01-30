@@ -183,7 +183,7 @@ if __name__ == '__main__':
     # Open serial port
     rospy.loginfo("Opening serial port: %s...", port)
     try:
-        ser = serial.Serial(port, 115200, timeout=0.02)
+        ser = serial.Serial(port, 115200, timeout=0.05)
     except serial.serialutil.SerialException:
         rospy.logerr("IMU not found at port " + port + ". Check the port in the launch file.")
         sys.exit(0)

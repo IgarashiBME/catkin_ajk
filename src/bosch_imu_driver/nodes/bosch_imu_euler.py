@@ -181,13 +181,13 @@ if __name__ == '__main__':
     # Get parameters values
     port = rospy.get_param('~port', '/dev/ttyUSB0')
     frame_id = rospy.get_param('~frame_id', 'imu_link')
-    frequency = rospy.get_param('frequency', 100)
+    frequency = rospy.get_param('~frequency', 100)
     operation_mode = rospy.get_param('operation_mode', OPER_MODE_NDOF)
 
     # Open serial port
     rospy.loginfo("Opening serial port: %s...", port)
     try:
-        ser = serial.Serial(port, 115200, timeout=0.02)
+        ser = serial.Serial(port, 115200, timeout=0.05)
     except serial.serialutil.SerialException:
         rospy.logerr("IMU not found at port " + port + ". Check the port in the launch file.")
         sys.exit(0)
@@ -288,12 +288,13 @@ if __name__ == '__main__':
             temperature_msg.temperature = buf[44]
             pub_temp.publish(temperature_msg)
 
-            #yaw = float(st.unpack('h', st.pack('BB', buf[18], buf[19]))[0]) / 16.0
+            yaw = float(st.unpack('h', st.pack('BB', buf[18], buf[19]))[0]) / 16.0
             roll = float(st.unpack('h', st.pack('BB', buf[20], buf[21]))[0]) / 16.0
             pitch = float(st.unpack('h', st.pack('BB', buf[22], buf[23]))[0]) / 16.0
             pub_roll.publish(str(round(roll, 1)))
             pub_pitch.publish(str(round(pitch, 1)))
             #           print "RPY=(%.2f %.2f %.2f)" %(roll, pitch, yaw)
+            #print yaw
 
             seq = seq + 1
         rate.sleep()
