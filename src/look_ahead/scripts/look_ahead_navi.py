@@ -1,11 +1,10 @@
-#! /usr/bin/env python
+#! /usr/bin/python
+# coding:utf-8
 
 import rospy
 import numpy as np
 import csv
-import os
 import time
-import sys
 
 import load_waypoint
 
@@ -15,24 +14,32 @@ from std_msgs.msg import String
 from geometry_msgs.msg import Twist
 from gazebo_msgs.msg import ModelStates
 
+# ros custom message
+from look_ahead.msg import AJK_value
+
 from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
 
 look_ahead_dist = 1.3  # look-ahead distance [meter]
 spacing = 0.6       # distance between lines 
-xy_tolerance = 0.2  # [meter]
+x_tolerance = 0.1  # [meter]
 yaw_tolerance = 40.0/180.0 * np.pi # [radians]
 
 # translation value
 forward_const = 1
 backward_const = -1
 
+# AJK
+neutral_value = 512
+FB_opt = 220
+LR_opt = 50
+
 # gain
 kp = 0.7
-kd = 0.7
+kd = 1.0
 
 # frequency [Hz]
-frequency = 20
+frequency = 10
 
 class look_ahead():
     def __init__(self):
@@ -51,8 +58,8 @@ class look_ahead():
         # ROS callback function, receive /odom mesage
         rospy.Subscriber('/gnss_imu', Odometry, self.odom_callback, queue_size = 1)
         #rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
-        self.pub = rospy.Publisher('/sim_ajk/diff_drive_controller/cmd_vel', Twist, queue_size = 1)
-        self.twist = Twist()
+        self.ajk_pub = rospy.Publisher('/ajk_value', AJK_value, queue_size = 1)
+        self.ajk_value = AJK_value()
         
     def odom_callback(self, msg):
         self.x = msg.pose.pose.position.x
@@ -163,25 +170,32 @@ class look_ahead():
                 translation = forward_const
 
             # calculate the steering_value
-            steering_value = kp*steering_ang -kd*self.pre_steering_ang
+            pd_value = kp*steering_ang +kd*self.pre_steering_ang
             self.pre_steering_ang = steering_ang
 
+            ajk_steering = neutral_value +LR_opt*pd_value
+            ajk_translation = neutral_value +FB_opt*translation
             #print wp_x_adj, wp_y_adj, tf_angle/np.pi*180
             print "   transform_wx:", wp_x_tf, "   transform_wy:", wp_y_tf
             print "transform_own_x:", own_x_tf, "transform_own_y:", own_y_tf
             print "target_line_error:", d
+            print front_list
+            print rear_list
+            print steering_ang, pd_value
 
             # If the yaw error is large, pivot turn.
             if abs(steering_ang) > yaw_tolerance:
-                self.twist.linear.x = 0
-                self.twist.angular.z = steering_value
+                self.ajk_value.stamp = rospy.Time.now()
+                self.ajk_value.translation = 0
+                self.ajk_value.steering = ajk_steering
             else:
-                self.twist.linear.x = translation
-                self.twist.angular.z = steering_value
-            self.pub.publish(self.twist)
+                self.ajk_value.stamp = rospy.Time.now()
+                self.ajk_value.translation = ajk_translation
+                self.ajk_value.steering = ajk_steering
+            self.ajk_pub.publish(self.ajk_value)
 
             # when reaching the look-ahead distance, read the next waypoint.
-            if waypoint_dist < xy_tolerance:
+            if (wp_x_tf - own_x_tf)**2 < x_tolerance:
                 seq = seq + 1
 
             if seq >= len(self.waypoint_x):

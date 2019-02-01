@@ -1,4 +1,9 @@
+#!/usr/bin/python
+
 import numpy as np
+from look_ahead.msg import AJKAJK
+
+print AJKAJK
 
 x1 = 1
 y1 = 1
