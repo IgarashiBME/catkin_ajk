@@ -30,6 +30,7 @@
 
 /* ublox NavPVT custom ROS message */
 #include "mavlink_ajk/NavPVT.h"
+#include "mavlink_ajk/MAV_Mission.h"
 
 /* mavlink library */
 #include "mavlink.h"
@@ -132,6 +133,9 @@ int main(int argc, char **argv){
 
     Listener listener;
     ros::Subscriber sub = n.subscribe("/navpvt", 10, &Listener::gnss_callback, &listener);
+
+    ros::Publisher pub_mission = n.advertise<mavlink_ajk::MAV_Mission>("mav_mission", 1000);
+    mavlink_ajk::MAV_Mission mission_rosmsg;
 
     while (ros::ok()){
         /* time interval */        
@@ -239,6 +243,14 @@ int main(int argc, char **argv){
                     fs << mission_seq << ",";
                     fs << fixed << setprecision(8) << waypoint_x << "," << waypoint_y << endl; 
                     fs.close();
+
+                    // publish ROS message
+                    mission_rosmsg.seq = mavmii.seq;
+                    mission_rosmsg.total_seq = mission_total_seq;
+                    mission_rosmsg.command = mavmii.command;
+                    mission_rosmsg.latitude = waypoint_x;
+                    mission_rosmsg.longitude = waypoint_y;
+                    pub_mission.publish(mission_rosmsg);
 
                     pre_mission_seq = mavmii.seq;
                     mission_seq = mavmii.seq+1;
