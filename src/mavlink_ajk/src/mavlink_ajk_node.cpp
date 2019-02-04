@@ -81,10 +81,15 @@ int main(int argc, char **argv){
     unsigned int mission_total_seq = 0;
     unsigned int mission_seq = 0;
     int pre_mission_seq = -1;
-    uint64_t pre_time = 0;
-    int time_interval = 900000; //0.9 second
     int mav_mode = MAV_MODE_GUIDED_DISARMED;
     int custom_mode = 0;
+
+    // time interval
+    uint64_t pre_heartbeat_time;
+    int heartbeat_interval = 900000; //0.9 second
+
+    uint64_t pre_request_time;
+    int request_interval = 30000; // 0.05 second
 
     // Change the target ip if parameter was given
     strcpy(target_ip, "127.0.0.1");
@@ -116,7 +121,9 @@ int main(int argc, char **argv){
     gcAddr.sin_addr.s_addr = inet_addr(target_ip);
     gcAddr.sin_port = htons(14550);
 
-    pre_time = microsSinceEpoch();
+    /* time setting for interval */
+    pre_heartbeat_time = microsSinceEpoch();
+    pre_request_time = microsSinceEpoch();
 
     /* ros intializer */
     ros::init(argc, argv, "mavlink_node");
@@ -128,7 +135,7 @@ int main(int argc, char **argv){
 
     while (ros::ok()){
         /* time interval */        
-        if (microsSinceEpoch() - pre_time > time_interval){
+        if (microsSinceEpoch() - pre_heartbeat_time > heartbeat_interval){
             /* time print */
             //std::cout << microsSinceEpoch() - pre_time << std::endl;
 
@@ -167,21 +174,24 @@ int main(int argc, char **argv){
             len = mavlink_msg_to_send_buffer(buf, &mavmsg);
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 
-            pre_time = microsSinceEpoch();
+            pre_heartbeat_time = microsSinceEpoch();
         }
 
         // Mission Request
-        if (mission_total_seq > 0 && pre_mission_seq != mission_seq){
+        if (mission_total_seq > 0 && microsSinceEpoch() - pre_request_time > request_interval){
+            //printf("request\n");
+            //std::cout << microsSinceEpoch() - pre_request_time << std::endl;
             mavlink_msg_mission_request_int_pack(1, 200, &mavmsg, 0, 0, mission_seq);
             len = mavlink_msg_to_send_buffer(buf, &mavmsg);
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
-            pre_mission_seq = mission_seq;
+
+            pre_request_time = microsSinceEpoch();
         }
 
         /* receiver section */
         memset(buf, 0, BUFFER_LENGTH);
         recsize = recvfrom(sock, (void *)buf, BUFFER_LENGTH, 0, (struct sockaddr *)&gcAddr, &fromlen);
-        printf("Bytes Received: %d\n", (int)recsize);
+
         if (recsize > 0){
             // Something received - print out all bytes and parse packet
             mavlink_message_t mavmsg;
@@ -195,8 +205,8 @@ int main(int argc, char **argv){
                 //printf("%02x ", (unsigned char)temp);
                 if (mavlink_parse_char(MAVLINK_COMM_0, buf[i], &mavmsg, &status)){
                     // Packet decode
-                    printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", 
-                           mavmsg.sysid, mavmsg.compid, mavmsg.len, mavmsg.msgid);
+                    //printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", 
+                    //       mavmsg.sysid, mavmsg.compid, mavmsg.len, mavmsg.msgid);
                 }
             }
             if (mavmsg.msgid == 44){
@@ -217,22 +227,22 @@ int main(int argc, char **argv){
 
                 // decode MISSION_ITEM_INT message
                 mavlink_msg_mission_item_int_decode(&mavmsg, &mavmii);
-                float waypoint_x = mavmii.x/10000000.0;
-                float waypoint_y = mavmii.y/10000000.0;
-                printf("%i, %i, %i, %f, %f\n", mavmii.seq, mission_total_seq, mavmii.command,
-                       waypoint_x, waypoint_y);
+                double waypoint_x = mavmii.x/10000000.0;
+                double waypoint_y = mavmii.y/10000000.0;
                     
-                // output waypoint
-                if (mavmii.command == 16){
+                // print and output waypoint
+                if (pre_mission_seq != mavmii.seq && mission_seq == mavmii.seq){
+                    printf("%i, %i, %i, %.09f, %.09f\n", mavmii.seq, mission_total_seq, mavmii.command,
+                           waypoint_x, waypoint_y);
                     fstream fs;
                     fs.open("/home/nouki/waypoint.csv", ios::out | ios::app);
                     fs << mission_seq << ",";
                     fs << fixed << setprecision(8) << waypoint_x << "," << waypoint_y << endl; 
                     fs.close();
-                }
 
-                // next waypoint
-                mission_seq = mavmii.seq+1;
+                    pre_mission_seq = mavmii.seq;
+                    mission_seq = mavmii.seq+1;
+                }
 
                 // if mission sequence is end, send mission ack
                 if (mission_seq == mission_total_seq){
@@ -292,7 +302,7 @@ int main(int argc, char **argv){
             //printf("\n");
         }
         memset(buf, 0, BUFFER_LENGTH);
-        usleep(1000000); // Sleep 10 msec
+        usleep(10000); // Sleep 10 msec
         ros::spinOnce();
     }
 }
