@@ -27,6 +27,7 @@
 /* ROS library */
 #include "ros/ros.h"
 #include "geometry_msgs/Twist.h"
+#include "std_msgs/Int16.h"
 
 /* ublox NavPVT custom ROS message */
 #include "mavlink_ajk/NavPVT.h"
@@ -134,8 +135,11 @@ int main(int argc, char **argv){
     Listener listener;
     ros::Subscriber sub = n.subscribe("/navpvt", 10, &Listener::gnss_callback, &listener);
 
-    ros::Publisher pub_mission = n.advertise<mavlink_ajk::MAV_Mission>("mav_mission", 1000);
+    ros::Publisher pub_mission = n.advertise<mavlink_ajk::MAV_Mission>("mav/mission", 1000);
     mavlink_ajk::MAV_Mission mission_rosmsg;
+
+    ros::Publisher pub_arm = n.advertise<std_msgs::Int16>("mav/arm", 1);
+    std_msgs::Int16 arm_rosmsg;
 
     while (ros::ok()){
         /* time interval */        
@@ -179,6 +183,20 @@ int main(int argc, char **argv){
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 
             pre_heartbeat_time = microsSinceEpoch();
+
+            /* publish ARM ROS message */
+            arm_rosmsg.data = mav_mode;
+            pub_arm.publish(arm_rosmsg);
+
+            /* send mission_current */
+            if (mav_mode == MAV_MODE_GUIDED_ARMED){
+                int test_seq;
+                test_seq = test_seq +1;
+                mavlink_msg_mission_current_pack(1, 200, &mavmsg, test_seq);
+                len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+                bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
+                                    sizeof(struct sockaddr_in));
+            }
         }
 
         // Mission Request
@@ -209,8 +227,8 @@ int main(int argc, char **argv){
                 //printf("%02x ", (unsigned char)temp);
                 if (mavlink_parse_char(MAVLINK_COMM_0, buf[i], &mavmsg, &status)){
                     // Packet decode
-                    //printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", 
-                    //       mavmsg.sysid, mavmsg.compid, mavmsg.len, mavmsg.msgid);
+                    printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", 
+                           mavmsg.sysid, mavmsg.compid, mavmsg.len, mavmsg.msgid);
                 }
             }
             if (mavmsg.msgid == 44){
@@ -273,6 +291,7 @@ int main(int argc, char **argv){
                 mavlink_msg_set_mode_decode(&mavmsg, &mavsm);
                 printf("%i, %i, %i", mavsm.custom_mode, mavsm.target_system, mavsm.base_mode);
                 custom_mode = mavsm.custom_mode;
+                mav_mode = mavsm.base_mode;
             }
 
             /* COMMAND_LONG decoder */
