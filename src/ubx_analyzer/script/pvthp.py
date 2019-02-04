@@ -49,6 +49,9 @@ class ublox():
         self.navpvt_data = NavPVT()
         self.utm_hp = UTMHP()
 
+        # initialize the valiable
+        self.fix_status = 0
+
     def loop(self):
         # searching for UBX-NAV-Class headers
         while not rospy.is_shutdown():
@@ -94,10 +97,16 @@ class ublox():
             latitudeHp  = latitude + latitudeHp
             heightHp    = height + heightHp
 
+            # accuracy
+            hAcc = float(struct.unpack('I', struct.pack('BBBB', Data[30], Data[31],
+                                                         Data[32], Data[33]))[0])/10000.0
+            vAcc = float(struct.unpack('I', struct.pack('BBBB', Data[30], Data[31],
+                                                         Data[32], Data[33]))[0])/10000.0
+
             # UTM
             utmzone = int((longitude + 180)/6) +1   # If you are on the specific location, can't be calculated. 
             convertor = Proj(proj='utm', zone=utmzone, ellps='WGS84')
-            self.x, self.y = convertor(longitudeHp, latitudeHp)
+            x, y = convertor(longitudeHp, latitudeHp)
             
             #publish navsatfix
             self.navsat.header.stamp = rospy.Time.now()
@@ -106,9 +115,9 @@ class ublox():
             self.navsat.latitude = latitudeHp
             self.navsat.longitude = longitudeHp
             self.navsat.altitude = heightHp
-            self.navsat.position_covariance = np.array([self.hAcc/1000.0, 0, 0,
-                                                        0, self.hAcc/1000.0, 0,
-                                                        0, 0, self.vAcc/1000.0])
+            self.navsat.position_covariance = np.array([hAcc,  0.0,  0.0,
+                                                         0.0, hAcc,  0.0,
+                                                         0.0,  0.0, vAcc])
             self.pub_navsat.publish(self.navsat)
             
             # Publish utm_hp
@@ -117,14 +126,19 @@ class ublox():
             self.utm_hp.fix_status = self.fix_status
             self.utm_hp.lonHp = longitudeHp
             self.utm_hp.latHp = latitudeHp
-            self.utm_hp.utm_easting = self.x
-            self.utm_hp.utm_northing = self.y
+            self.utm_hp.utm_easting = x
+            self.utm_hp.utm_northing = y
             self.utm_hp.heightHp = heightHp
-            self.utm_hp.hMSL = self.hMSL
-            self.utm_hp.hAcc = self.hAcc
-            self.utm_hp.vAcc = self.vAcc
-            self.utm_hp.pDOP = self.pDOP
+            self.utm_hp.hAcc = hAcc
+            self.utm_hp.vAcc = vAcc
             self.pub_utm_hp.publish(self.utm_hp)
+
+            # publish odometry message (UTM coodinate)
+            self.utm.header.stamp = rospy.Time.now()
+            self.utm.pose.pose.position.x = x
+            self.utm.pose.pose.position.y = y
+            self.utm.pose.pose.position.z = heightHp
+            self.pub_utm.publish(self.utm)
 
             #print "HPPOSLLH"
             #print gpst
@@ -173,28 +187,18 @@ class ublox():
                                          NAV_PVT_Data[36], NAV_PVT_Data[37]))[0])/1000.0
 
             # sea level
-            self.hMSL = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[38], NAV_PVT_Data[39], 
+            hMSL = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[38], NAV_PVT_Data[39], 
                                                              NAV_PVT_Data[40], NAV_PVT_Data[41]))[0])/1000.0
 
             # accuracy
-            self.hAcc = float(struct.unpack('I', struct.pack('BBBB', NAV_PVT_Data[42], NAV_PVT_Data[43],
+            hAcc = float(struct.unpack('I', struct.pack('BBBB', NAV_PVT_Data[42], NAV_PVT_Data[43],
                                                               NAV_PVT_Data[44], NAV_PVT_Data[45]))[0])
-            self.vAcc = float(struct.unpack('I', struct.pack('BBBB', NAV_PVT_Data[46], NAV_PVT_Data[47],
+            vAcc = float(struct.unpack('I', struct.pack('BBBB', NAV_PVT_Data[46], NAV_PVT_Data[47],
                                                               NAV_PVT_Data[48], NAV_PVT_Data[49]))[0])
-            self.pDOP = int(struct.unpack('h', struct.pack('BB', NAV_PVT_Data[78], NAV_PVT_Data[79]))[0])
+            pDOP = int(struct.unpack('h', struct.pack('BB', NAV_PVT_Data[78], NAV_PVT_Data[79]))[0])
 
             # publish rostime and gpstime
             self.pub_gpst.publish(str(rospy.Time.now()) +"," +str(gpst))
-
-            # publish UTM coordinate
-            try:
-                self.utm.header.stamp = rospy.Time.now()
-                self.utm.pose.pose.position.x = self.x
-                self.utm.pose.pose.position.y = self.y
-                self.utm.pose.pose.position.z = height
-                self.pub_utm.publish(self.utm)
-            except AttributeError:
-                pass
 
             # publish GNSS status
             self.navpvt_data.iTOW = gpst
@@ -205,9 +209,14 @@ class ublox():
             self.navpvt_data.min = minute
             self.navpvt_data.sec = second
             self.navpvt_data.numSV = self.satellites
+            self.navpvt_data.fix_status = self.fix_status
             self.navpvt_data.lon = longitude
             self.navpvt_data.lat = latitude
             self.navpvt_data.height = height
+            self.navpvt_data.hMSL = hMSL
+            self.navpvt_data.hAcc = hAcc
+            self.navpvt_data.vAcc = vAcc
+            self.navpvt_data.pDOP = pDOP
             self.pub_navpvt.publish(self.navpvt_data)            
 
             # print section

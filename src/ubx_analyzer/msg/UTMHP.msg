@@ -8,8 +8,6 @@ float64 latHp               # Latitude [deg / 1e-7]
 float64 utm_easting
 float64 utm_northing
 float64 heightHp            # Height above Ellipsoid [mm]
-int32 hMSL              # Height above mean sea level [mm]
 uint32 hAcc             # Horizontal Accuracy Estimate [mm]
 uint32 vAcc             # Vertical Accuracy Estimate [mm]
-uint16 pDOP             # Position DOP [1 / 0.01]
 
