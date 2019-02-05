@@ -83,8 +83,10 @@ int main(int argc, char **argv){
     unsigned int mission_total_seq = 0;
     unsigned int mission_seq = 0;
     int pre_mission_seq = -1;
-    int mav_mode = MAV_MODE_GUIDED_DISARMED;
-    int custom_mode = 0;
+
+    // mavlink mode
+    uint16_t base_mode = MAV_MODE_GUIDED_DISARMED;
+    uint16_t custom_mode = 0;
 
     // time interval
     uint64_t pre_heartbeat_time;
@@ -148,13 +150,12 @@ int main(int argc, char **argv){
             //std::cout << microsSinceEpoch() - pre_time << std::endl;
 
             /*Send Heartbeat */
-            // https://github.com/mavlink/c_library_v1/blob/3da9db30f3ea7fe8fa8241a74ab343b9971e7e9a/common/common.h#L166
-            // mavlink_msg_heartbeat_pack(1, 1, &mavmsg, type, autopilot, 
+            //mavlink_msg_heartbeat_pack(1, 1, &mavmsg, type, autopilot, 
             //                           base_mode, custom_mode, system_status);
             //mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_QUADROTOR, MAV_AUTOPILOT_PX4, 
             //                           MAV_MODE_GUIDED_ARMED, 3, MAV_STATE_STANDBY);
             mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_GROUND_ROVER, MAV_AUTOPILOT_ARDUPILOTMEGA, 
-                                       mav_mode, custom_mode, MAV_STATE_STANDBY);
+                                       base_mode, custom_mode, MAV_STATE_STANDBY);
             len = mavlink_msg_to_send_buffer(buf, &mavmsg);
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 
@@ -184,13 +185,13 @@ int main(int argc, char **argv){
 
             pre_heartbeat_time = microsSinceEpoch();
 
-            /* publish ARM ROS message */
-            arm_rosmsg.data = mav_mode;
+            /* publish ARM-DISARM ROS message */
+            arm_rosmsg.data = base_mode;
             pub_arm.publish(arm_rosmsg);
 
             /* send mission_current */
-            if (mav_mode == MAV_MODE_GUIDED_ARMED){
-                int test_seq;
+            if (base_mode == MAV_MODE_GUIDED_ARMED){
+                uint32_t test_seq;
                 test_seq = test_seq +1;
                 mavlink_msg_mission_current_pack(1, 200, &mavmsg, test_seq);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
@@ -199,7 +200,7 @@ int main(int argc, char **argv){
             }
         }
 
-        // Mission Request
+        /* Mission Request */
         if (mission_total_seq > 0 && microsSinceEpoch() - pre_request_time > request_interval){
             //printf("request\n");
             //std::cout << microsSinceEpoch() - pre_request_time << std::endl;
@@ -291,7 +292,7 @@ int main(int argc, char **argv){
                 mavlink_msg_set_mode_decode(&mavmsg, &mavsm);
                 printf("%i, %i, %i", mavsm.custom_mode, mavsm.target_system, mavsm.base_mode);
                 custom_mode = mavsm.custom_mode;
-                mav_mode = mavsm.base_mode;
+                base_mode = mavsm.base_mode;
             }
 
             /* COMMAND_LONG decoder */
@@ -308,14 +309,14 @@ int main(int argc, char **argv){
                                                  MAV_RESULT_ACCEPTED);
                     len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                     bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
-                    mav_mode = MAV_MODE_GUIDED_ARMED;
+                    base_mode = MAV_MODE_GUIDED_ARMED;
                 }
                 if (mavcl.command == MAV_CMD_COMPONENT_ARM_DISARM && mavcl.param1 == 0.0){
                     mavlink_msg_command_ack_pack(1, 200, &mavmsg, MAV_CMD_COMPONENT_ARM_DISARM,
                                                  MAV_RESULT_ACCEPTED);
                     len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                     bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
-                    mav_mode = MAV_MODE_GUIDED_DISARMED;
+                    base_mode = MAV_MODE_GUIDED_DISARMED;
                 }
                 if (mavcl.command == MAV_CMD_REQUEST_PROTOCOL_VERSION){
                     mavlink_msg_command_ack_pack(1, 200, &mavmsg, mavcl.command,
