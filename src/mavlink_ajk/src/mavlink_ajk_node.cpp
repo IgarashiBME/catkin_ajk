@@ -32,6 +32,7 @@
 /* ublox NavPVT custom ROS message */
 #include "mavlink_ajk/NavPVT.h"
 #include "mavlink_ajk/MAV_Mission.h"
+#include "mavlink_ajk/MAV_Modes.h"
 
 /* mavlink library */
 #include "mavlink.h"
@@ -85,7 +86,7 @@ int main(int argc, char **argv){
     int pre_mission_seq = -1;
 
     // mavlink mode
-    uint16_t base_mode = MAV_MODE_GUIDED_DISARMED;
+    uint16_t base_mode = 0; //MAV_MODE_GUIDED_DISARMED;
     uint16_t custom_mode = 0;
 
     // time interval
@@ -140,8 +141,8 @@ int main(int argc, char **argv){
     ros::Publisher pub_mission = n.advertise<mavlink_ajk::MAV_Mission>("mav/mission", 1000);
     mavlink_ajk::MAV_Mission mission_rosmsg;
 
-    ros::Publisher pub_arm = n.advertise<std_msgs::Int16>("mav/arm", 1);
-    std_msgs::Int16 arm_rosmsg;
+    ros::Publisher pub_modes = n.advertise<mavlink_ajk::MAV_Modes>("mav/modes", 1);
+    mavlink_ajk::MAV_Modes modes_rosmsg;
 
     while (ros::ok()){
         /* time interval */        
@@ -186,8 +187,9 @@ int main(int argc, char **argv){
             pre_heartbeat_time = microsSinceEpoch();
 
             /* publish ARM-DISARM ROS message */
-            arm_rosmsg.data = base_mode;
-            pub_arm.publish(arm_rosmsg);
+            modes_rosmsg.base_mode = base_mode;
+            modes_rosmsg.custom_mode = custom_mode;
+            pub_modes.publish(modes_rosmsg);
 
             /* send mission_current */
             if (base_mode == MAV_MODE_GUIDED_ARMED){
