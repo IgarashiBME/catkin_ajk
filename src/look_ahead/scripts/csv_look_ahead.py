@@ -195,12 +195,14 @@ class look_ahead():
             self.ajk_pub.publish(self.ajk_value)
 
             # when reaching the look-ahead distance, read the next waypoint.
-            if (wp_x_tf - own_x_tf)**2 < x_tolerance:
+            if (wp_x_tf - own_x_tf) < x_tolerance:
                 seq = seq + 1
 
             if seq >= len(self.waypoint_x):
-                self.twist.linear.x = 0
-                self.twist.angular.z = 0                
+                self.ajk_value.stamp = rospy.Time.now()
+                self.ajk_value.translation = 0
+                self.ajk_value.steering = 0
+                self.ajk_pub.publish(self.ajk_value)
                 break
             time.sleep(1/frequency)
 
