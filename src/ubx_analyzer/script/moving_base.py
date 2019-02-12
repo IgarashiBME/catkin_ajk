@@ -143,16 +143,16 @@ class ublox():
                 self.moving_base.orientation.w = heading_q[3]
                 self.pub_moving_base.publish(self.moving_base)
 
-            print iTOW
-            print fix_status, fix_str
-            print "N:",relPosN, "E:",relPosE, "D:",relPosD
-            print "HPN:",relPosHPN, "HPE:",relPosHPE, "HPD:",relPosHPD
+            #print iTOW
+            #print fix_status, fix_str
+            #print "N:",relPosN, "E:",relPosE, "D:",relPosD
+            #print "HPN:",relPosHPN, "HPE:",relPosHPE, "HPD:",relPosHPD
 
             # heading debug space
-            efq_heading = euler_from_quaternion(heading_q)
-            print "arctan2_heading:", heading/np.pi *180
-            print "    efq_heading:", efq_heading[2]/np.pi *180
-            print
+            #efq_heading = euler_from_quaternion(heading_q)
+            #print "arctan2_heading:", heading/np.pi *180
+            #print "    efq_heading:", efq_heading[2]/np.pi *180
+            #print
 
     def shutdown(self):
         rospy.loginfo("ublox analyzer node was terminated") 
