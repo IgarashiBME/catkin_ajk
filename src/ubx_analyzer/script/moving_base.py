@@ -14,6 +14,7 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from sensor_msgs.msg import Imu
 from ubx_analyzer.msg import RELPOSNED
+from ubx_analyzer.msg import UTMHP
 
 # ROS function
 from tf.transformations import quaternion_from_euler
@@ -39,11 +40,21 @@ class ublox():
 
         rospy.on_shutdown(self.shutdown)
 
+        # variables initialize
+        self.utm_hp_x = 0
+        self.utm_hp_y = 0
+        self.utm_hp_z = 0
+
         # ROS publisher initialize
-        self.pub_moving_base = rospy.Publisher('moving_base', Imu, queue_size = 1)
+        self.pub_moving_base = rospy.Publisher('/moving_base', Imu, queue_size = 1)
         self.moving_base = Imu()
-        self.pub_relposned = rospy.Publisher('relposned', RELPOSNED, queue_size = 1)
+        self.pub_relposned = rospy.Publisher('/relposned', RELPOSNED, queue_size = 1)
         self.relposned = RELPOSNED()
+        self.pub_gnss_odom = rospy.Publisher('/gnss_odom', Odometry, queue_size = 1)
+        self.gnss_odom = Odometry()
+
+        # ROS subscriber
+        rospy.Subscriber('/utm_hp', UTMHP, self.utm_hp)
 
     def loop(self):
         # searching for UBX-NAV-Class headers
@@ -133,8 +144,8 @@ class ublox():
             # convert to quaternion
             heading_q = quaternion_from_euler(0, 0, heading)
 
-            # Publish heading with ROS Imu format
             if fix_status == 2:
+                # Publish heading with ROS Imu format                
                 self.moving_base.header.frame_id = "moving_base"
                 self.moving_base.header.stamp = rospy.Time.now()
                 self.moving_base.orientation.x = heading_q[0]
@@ -142,6 +153,18 @@ class ublox():
                 self.moving_base.orientation.z = heading_q[2]
                 self.moving_base.orientation.w = heading_q[3]
                 self.pub_moving_base.publish(self.moving_base)
+
+                # Publish heading and UTM with ROS Odom format
+                self.gnss_odom.header.frame_id = "gnss_odom"
+                self.gnss_odom.header.stamp = rospy.Time.now()
+                self.gnss_odom.pose.pose.position.x = self.utm_x
+                self.gnss_odom.pose.pose.position.y = self.utm_y
+                self.gnss_odom.pose.pose.position.z = self.utm_z
+                self.gnss_odom.pose.pose.orientation.x = heading_q[0]
+                self.gnss_odom.pose.pose.orientation.y = heading_q[1]
+                self.gnss_odom.pose.pose.orientation.z = heading_q[2]
+                self.gnss_odom.pose.pose.orientation.w = heading_q[3]
+                self.pub_gnss_odom.publish(self.gnss_odom)
 
             #print iTOW
             #print fix_status, fix_str
@@ -153,6 +176,11 @@ class ublox():
             #print "arctan2_heading:", heading/np.pi *180
             #print "    efq_heading:", efq_heading[2]/np.pi *180
             #print
+
+    def utm_hp(self, msg):
+        self.utm_hp_x = msg.utm_easting
+        self.utm_hp_y = msg.utm_northing
+        self.utm_hp_z = msg.heightHp
 
     def shutdown(self):
         rospy.loginfo("ublox analyzer node was terminated") 

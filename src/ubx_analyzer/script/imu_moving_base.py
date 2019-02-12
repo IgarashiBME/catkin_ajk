@@ -21,7 +21,7 @@ class fusion():
         rospy.Subscriber('/moving_base', Imu, self.moving_base)
         rospy.Subscriber('/utm_hp', UTMHP, self.utm_hp)
         # ROS publish function
-        self.pub = rospy.Publisher('/imu_moving_base', Odometry, queue_size = 1)
+        self.pub = rospy.Publisher('/gnss_imu_odom', Odometry, queue_size = 1)
         self.imu_moving_base = Odometry()
 
         rospy.spin()
