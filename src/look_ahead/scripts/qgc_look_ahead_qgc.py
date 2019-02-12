@@ -56,7 +56,7 @@ class look_ahead():
         rospy.on_shutdown(self.shutdown)
 
         # ROS callback function, receive /odom mesage
-        rospy.Subscriber('/gnss_imu', Odometry, self.odom_callback, queue_size = 1)
+        rospy.Subscriber('/gnss_imu_odom', Odometry, self.odom_callback, queue_size = 1)
         #rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
         self.ajk_pub = rospy.Publisher('/ajk_value', AJK_value, queue_size = 1)
         self.ajk_value = AJK_value()
