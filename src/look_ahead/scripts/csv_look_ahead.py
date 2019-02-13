@@ -58,7 +58,7 @@ class look_ahead():
         # ROS callback function, receive /odom mesage
         rospy.Subscriber('/gnss_odom', Odometry, self.odom_callback, queue_size = 1)
         #rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
-        self.ajk_pub = rospy.Publisher('/ajk_value', AJK_value, queue_size = 1)
+        self.ajk_pub = rospy.Publisher('/ajk_auto', AJK_value, queue_size = 1)
         self.ajk_value = AJK_value()
         
     def odom_callback(self, msg):
