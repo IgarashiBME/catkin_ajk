@@ -1,0 +1,10 @@
+forward     732 512
+backward    292 512
+right_turn  512 332
+left_turn   512 692
+
+right_forward  732 463
+left_forward   732 561
+right_backward 292 463
+left_backward  292 561
+

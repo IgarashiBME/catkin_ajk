@@ -49,6 +49,7 @@ add_message_files(
 #   Message1.msg
 #   Message2.msg
     HumanProximity.msg
+    AJK_value.msg
 )
 
 ## Generate services in the 'srv' folder
