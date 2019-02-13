@@ -138,7 +138,8 @@ class ublox():
             self.relposned.accN = accN
             self.relposned.accE = accE
             self.relposned.accD = accD
-            self.relposned.heading = heading
+            self.relposned.heading_rad = heading
+            self.relposned.heading_deg = heading/np.pi *180
             self.pub_relposned.publish(self.relposned)
 
             # convert to quaternion
@@ -157,9 +158,9 @@ class ublox():
                 # Publish heading and UTM with ROS Odom format
                 self.gnss_odom.header.frame_id = "gnss_odom"
                 self.gnss_odom.header.stamp = rospy.Time.now()
-                self.gnss_odom.pose.pose.position.x = self.utm_x
-                self.gnss_odom.pose.pose.position.y = self.utm_y
-                self.gnss_odom.pose.pose.position.z = self.utm_z
+                self.gnss_odom.pose.pose.position.x = self.utm_hp_x
+                self.gnss_odom.pose.pose.position.y = self.utm_hp_y
+                self.gnss_odom.pose.pose.position.z = self.utm_hp_z
                 self.gnss_odom.pose.pose.orientation.x = heading_q[0]
                 self.gnss_odom.pose.pose.orientation.y = heading_q[1]
                 self.gnss_odom.pose.pose.orientation.z = heading_q[2]

@@ -22,7 +22,7 @@ class fusion():
         rospy.Subscriber('/utm_hp', UTMHP, self.utm_hp)
         # ROS publish function
         self.pub = rospy.Publisher('/gnss_imu_odom', Odometry, queue_size = 1)
-        self.imu_moving_base = Odometry()
+        self.gnss_imu_odom = Odometry()
 
         rospy.spin()
 
@@ -47,22 +47,23 @@ class fusion():
         # add the diffrence of imu_yaw to gnss_yaw
         try:
             self.fusion_yaw = self.fusion_yaw + self.imu_diff
-            print self.fusion_yaw/np.pi*180
+
             if self.fusion_yaw < -np.pi:
                 self.fusion_yaw = self.fusion_yaw + np.pi *2
             if self.fusion_yaw > np.pi:
                 self.fusion_yaw = self.fusion_yaw - np.pi*2
             fusion_q = quaternion_from_euler(0, 0, self.fusion_yaw)
+            print self.fusion_yaw/np.pi*180
 
-            self.gnss_imu.pose.pose.position.x = self.utm_x
-            self.gnss_imu.pose.pose.position.y = self.utm_y
-            self.gnss_imu.pose.pose.position.z = self.utm_z
-            self.gnss_imu.pose.pose.orientation.x = fusion_q[0]
-            self.gnss_imu.pose.pose.orientation.y = fusion_q[1]
-            self.gnss_imu.pose.pose.orientation.z = fusion_q[2]
-            self.gnss_imu.pose.pose.orientation.w = fusion_q[3]
+            self.gnss_imu_odom.pose.pose.position.x = self.utm_x
+            self.gnss_imu_odom.pose.pose.position.y = self.utm_y
+            self.gnss_imu_odom.pose.pose.position.z = self.utm_z
+            self.gnss_imu_odom.pose.pose.orientation.x = fusion_q[0]
+            self.gnss_imu_odom.pose.pose.orientation.y = fusion_q[1]
+            self.gnss_imu_odom.pose.pose.orientation.z = fusion_q[2]
+            self.gnss_imu_odom.pose.pose.orientation.w = fusion_q[3]
 
-            self.pub.publish(self.imu_moving_base)
+            self.pub.publish(self.gnss_imu_odom)
         except AttributeError:
             pass
 

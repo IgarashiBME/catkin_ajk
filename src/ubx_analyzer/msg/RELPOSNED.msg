@@ -11,5 +11,6 @@ float64 relPosHPD       # High-precision Down component [cm]
 float64 accN            # Accuracy of relative position North component [mm]
 float64 accE            # Accuracy of relative position East component [mm]
 float64 accD            # Accuracy of relative position Down component [mm]
-float64 heading         # calculate heading using NE component [radian]
+float64 heading_rad     # calculate heading using NE component [radian]
+float64 heading_deg
 

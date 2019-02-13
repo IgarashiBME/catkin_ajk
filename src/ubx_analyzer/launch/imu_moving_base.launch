@@ -21,7 +21,7 @@
     <rosparam file="$(arg mb_config_file)" command="load"/>
   </node>
 
-  <node pkg="imu_moving_base" type="imu_moving_base.py" name="imu_moving_base" output="screen">
+  <node pkg="ubx_analyzer" type="imu_moving_base.py" name="imu_moving_base" output="screen">
   </node>
 </launch>
 
