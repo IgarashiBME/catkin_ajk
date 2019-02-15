@@ -30,7 +30,8 @@ forward_const = 1
 backward_const = -1
 
 # AJK
-neutral_value = 512
+TRANSLATION_NEUTRAL = 512     # neutral value
+STEERING_NEUTRAL = 512        # neutral value
 FB_opt = 220
 LR_opt = 50
 
@@ -186,7 +187,7 @@ class look_ahead():
             # If the yaw error is large, pivot turn.
             if abs(steering_ang) > yaw_tolerance:
                 self.ajk_value.stamp = rospy.Time.now()
-                self.ajk_value.translation = 0
+                self.ajk_value.translation = TRANSLATION_NEUTRAL
                 self.ajk_value.steering = ajk_steering
             else:
                 self.ajk_value.stamp = rospy.Time.now()
@@ -200,8 +201,8 @@ class look_ahead():
 
             if seq >= len(self.waypoint_x):
                 self.ajk_value.stamp = rospy.Time.now()
-                self.ajk_value.translation = 0
-                self.ajk_value.steering = 0
+                self.ajk_value.translation = TRANSLATION_NEUTRAL
+                self.ajk_value.steering = STEERING_NEUTRAL
                 self.ajk_pub.publish(self.ajk_value)
                 break
             time.sleep(1/frequency)
