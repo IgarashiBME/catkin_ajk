@@ -15,8 +15,8 @@ from sanyokiki.msg import AJK_value
 
 # Protocol of Sanyokiki weeder
 START_BYTE = "ST"
-TRANSLATION_NEUTRAL = 512     # neutral value
-STEERING_NEUTRAL = 512        # neutral value
+TRANSLATION_NEUTRAL = "0200"     # neutral value
+STEERING_NEUTRAL = "0200"        # neutral value
 ENGINE_SPEED = "0E0E"          # minimam speed is 0A49
 ENGINE_ON = "0080"             # engine off value, engine on value is "0080"
 ENGINE_OFF = "0000" 
@@ -39,11 +39,11 @@ class controller():
     def __init__(self):
         #self.human_proximity_stamp = 0
         #self.human_proximity_value = 0
-        self.translation_value = '0' +hex(TRANSLATION_NEUTRAL)[2:5]
-        self.steering_value = '0' +hex(STEERING_NEUTRAL)[2:5]
+        self.translation_value = TRANSLATION_NEUTRAL
+        self.steering_value = STEERING_NEUTRAL
         self.manual_stamp = 0
-        self.auto_translation_value = '0' +hex(TRANSLATION_NEUTRAL)[2:5]
-        self.auto_steering_value = '0' +hex(STEERING_NEUTRAL)[2:5]
+        self.auto_translation_value = TRANSLATION_NEUTRAL
+        self.auto_steering_value = STEERING_NEUTRAL
         self.auto_stamp = 0
 
         # initialize serial port
@@ -107,10 +107,10 @@ class controller():
         #print self.ControlCommand
 
     def safety_stop(self):
-        self.translation_value = '0' +hex(TRANSLATION_NEUTRAL)[2:5]
-        self.steering_value = '0' +hex(STEERING_NEUTRAL)[2:5]
-        self.auto_translation_value = '0' +hex(TRANSLATION_NEUTRAL)[2:5]
-        self.auto_steering_value = '0' +hex(STEERING_NEUTRAL)[2:5]
+        self.translation_value = TRANSLATION_NEUTRAL
+        self.steering_value = STEERING_NEUTRAL
+        self.auto_translation_value = TRANSLATION_NEUTRAL
+        self.auto_steering_value = STEERING_NEUTRAL
         print "stop"
 
     # ROS callback
