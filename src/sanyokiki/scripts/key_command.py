@@ -94,11 +94,11 @@ def teleop():
             ajk_manual.steering = LOW_RIGHT_CONST
             pub_ajk_manual.publish(ajk_manual)
 
-        elif kb == None:
+        """elif kb == None:
             ajk_manual.stamp = rospy.Time.now()
             ajk_manual.translation = 0
             ajk_manual.steering = 0
-            pub_ajk_manual.publish(ajk_manual)
+            pub_ajk_manual.publish(ajk_manual)"""
 
         pub_engine.publish(engine_onoff)
         time.sleep(0.01)

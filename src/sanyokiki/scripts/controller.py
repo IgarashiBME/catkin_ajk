@@ -33,13 +33,18 @@ WRITE_SLEEP = 0.060 # 0.060 seconds
 
 # interval
 PRINT_INTERVAL = 1 # 1 seconds
-AJK_MANUAL_INTERVAL = 0.3 # The time since the manual signal stopped, 0.3 seconds
+CONTROL_SIGNAL_INTERVAL = 0.3 # The time since the manual and auto signal stopped, 0.3 seconds
 
 class controller():
     def __init__(self):
         #self.human_proximity_stamp = 0
         #self.human_proximity_value = 0
-        self.safety_stop()
+        self.translation_value = '0' +hex(TRANSLATION_NEUTRAL)[2:5]
+        self.steering_value = '0' +hex(STEERING_NEUTRAL)[2:5]
+        self.manual_stamp = 0
+        self.auto_translation_value = '0' +hex(TRANSLATION_NEUTRAL)[2:5]
+        self.auto_steering_value = '0' +hex(STEERING_NEUTRAL)[2:5]
+        self.auto_stamp = 0
 
         # initialize serial port
         """try:
@@ -104,6 +109,9 @@ class controller():
     def safety_stop(self):
         self.translation_value = '0' +hex(TRANSLATION_NEUTRAL)[2:5]
         self.steering_value = '0' +hex(STEERING_NEUTRAL)[2:5]
+        self.auto_translation_value = '0' +hex(TRANSLATION_NEUTRAL)[2:5]
+        self.auto_steering_value = '0' +hex(STEERING_NEUTRAL)[2:5]
+        print "stop"
 
     # ROS callback
     def engine_subs(self, msg):
@@ -112,42 +120,45 @@ class controller():
         else:
             engine_status = ENGINE_OFF
 
-        self.serial_write(str(self.translation_value), str(self.steering_value), engine_status)
-
+        now = rospy.Time.now().secs + rospy.Time.now().nsecs/1000000000.0
+        if now - self.manual_stamp < CONTROL_SIGNAL_INTERVAL:
+            self.serial_write(str(self.translation_value), str(self.steering_value), engine_status)
+        elif now - self.auto_stamp < CONTROL_SIGNAL_INTERVAL:
+            self.serial_write(str(self.auto_translation_value), str(self.auto_steering_value), engine_status)
+        else:
+            self.safety_stop()
+            self.serial_write(str(self.translation_value), str(self.steering_value), engine_status)            
+            
     # ROS callback
     def ajk_manual_subs(self, msg):
-        if msg.translation == 0 and msg.steering == 0:
-            self.translation_value = 0
-            self.steering_value = 0
-        else:
-            self.translation_value = '{:04x}'.format(msg.translation)
-            self.steering_value = '{:04x}'.format(msg.steering)
+        self.translation_value = '{:04x}'.format(msg.translation)
+        self.steering_value = '{:04x}'.format(msg.steering)
+        self.manual_stamp = msg.stamp.secs +msg.stamp.nsecs/1000000000.0
+        
+        #print self.manual_stamp
+        #print rospy.Time.now().secs + rospy.Time.now().nsecs/1000000000.0
 
-            # upper case is required for sanyo command
-            if self.translation_value.islower() == True:
-                self.translation_value = self.translation_value.upper()
-            if self.steering_value.islower() == True:
-                self.steering_value = self.steering_value.upper()
+        # upper case is required for sanyo command
+        if self.translation_value.islower() == True:
+            self.translation_value = self.translation_value.upper()
+        if self.steering_value.islower() == True:
+            self.steering_value = self.steering_value.upper()
 
     # ROS callback
     def ajk_auto_subs(self, msg):
-        if msg.translation == 0 and msg.steering == 0:
-            self.auto_translation = 0
-            self.auto_steering = 0
-        else:
-            self.auto_translation = '{:04x}'.format(msg.translation)
-            self.auto_steering = '{:04x}'.format(msg.steering)
+        self.auto_translation = '{:04x}'.format(msg.translation)
+        self.auto_steering = '{:04x}'.format(msg.steering)
+        self.auto_stamp = msg.stamp.secs +msg.stamp.nsecs/1000000000
 
-            # upper case is required for sanyo command
-            if self.auto_translation.islower() == True:
-                self.auto_translation = self.auto_translation.upper()
-            if self.auto_steering.islower() == True:
-                self.auto_steering = self.auto_steering.upper()         
+        # upper case is required for sanyo command
+        if self.auto_translation.islower() == True:
+            self.auto_translation = self.auto_translation.upper()
+        if self.auto_steering.islower() == True:
+            self.auto_steering = self.auto_steering.upper()         
 
     # loginfo loop of control command
     def loop(self):
         t1 = 0
-        ajk_manual_first = True
         while not rospy.is_shutdown():
             rospy.sleep(0.1)
             try:
