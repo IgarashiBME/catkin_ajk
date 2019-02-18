@@ -16,6 +16,7 @@ from gazebo_msgs.msg import ModelStates
 
 # ros custom message
 from look_ahead.msg import AJK_value
+from look_ahead.msg import Auto_Log
 
 from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
@@ -39,8 +40,8 @@ FB_OPTIMUM = 220
 LR_OPTIMUM = 60
 
 # gain
-KP = 0.007
-KD = 0.01
+KP = 0.7
+KD = 1.0
 
 # frequency [Hz]
 frequency = 10
@@ -64,7 +65,9 @@ class look_ahead():
         rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
         self.ajk_pub = rospy.Publisher('/ajk_auto', AJK_value, queue_size = 1)
         self.ajk_value = AJK_value()
-        
+        self.auto_log_pub = rospy.Publisher('/auto_log', Auto_Log, queue_size = 1)
+        self.auto_log = Auto_Log()
+
     def odom_callback(self, msg):
         self.x = msg.pose.pose.position.x
         self.y = msg.pose.pose.position.y
@@ -163,8 +166,8 @@ class look_ahead():
             #print steering_ang/np.pi*180.0
 
             # calculate the steering_value
-            p = KP *steering_ang
-            d = KD *self.pre_steering_ang
+            p = KP *steering_ang/180
+            d = KD *self.pre_steering_ang/180
             pd_value = p + d
             self.pre_steering_ang = steering_ang
 
@@ -188,13 +191,31 @@ class look_ahead():
             self.ajk_pub.publish(self.ajk_value)
 
             #print wp_x_adj, wp_y_adj, tf_angle/np.pi*180
-            print "sequence:", seq
+
+            # publish autonomous log
+            self.auto_log.stamp = rospy.Time.now()
+            self.auto_log.waypoint_seq = seq
+            self.auto_log.waypoint_x = self.waypoint_x[seq]
+            self.auto_log.waypoint_y = self.waypoint_y[seq]
+            self.auto_log.tf_waypoint_x = wp_x_tf
+            self.auto_log.tf_waypoint_y = wp_y_tf
+            self.auto_log.tf_own_x = own_x_tf
+            self.auto_log.tf_own_y = own_y_tf
+            self.auto_log.cross_track_error = -own_y_tf
+            self.auto_log.p = p
+            self.auto_log.d = d
+            self.auto_log.steering_ang = steering_ang
+            self.auto_log.translation = self.ajk_value.translation
+            self.auto_log.steering = self.ajk_value.steering
+            self.auto_log_pub.publish(self.auto_log)
+
+            """print "sequence:", seq
             print "transform_wx:", wp_x_tf, "transform_wy:", wp_y_tf
             print "transform_own_x:", own_x_tf, "transform_own_y:", own_y_tf
             print "cross_track_error:", d
             print front_steering_ang, rear_steering_ang
             print steering_ang, pd_value
-            print self.ajk_value.translation, self.ajk_value.steering
+            print self.ajk_value.translation, self.ajk_value.steering"""
 
             # when reaching the look-ahead distance, read the next waypoint.
             if (wp_x_tf - own_x_tf) < x_tolerance:
@@ -207,7 +228,7 @@ class look_ahead():
 
                     if np.linalg.norm(a-b) < SPACING:
                         seq = seq + 1
-                except UnboundLocalError:
+                except IndexError:
                     pass
 
             if seq >= len(self.waypoint_x):
@@ -215,8 +236,9 @@ class look_ahead():
                 self.ajk_value.translation = TRANSLATION_NEUTRAL
                 self.ajk_value.steering = STEERING_NEUTRAL
                 self.ajk_pub.publish(self.ajk_value)
+                print "mission_end"
                 break
-            print
+            #print
             time.sleep(1/frequency)
 
     # load waypoint list

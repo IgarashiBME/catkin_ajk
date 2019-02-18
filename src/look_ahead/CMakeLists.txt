@@ -50,6 +50,7 @@ find_package(catkin REQUIRED COMPONENTS
  add_message_files(
    FILES
    AJK_value.msg
+   Auto_Log.msg
  )
 
 ## Generate services in the 'srv' folder

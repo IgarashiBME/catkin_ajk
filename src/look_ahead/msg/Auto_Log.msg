@@ -10,6 +10,8 @@ float64 tf_own_x
 float64 tf_own_y
 float64 cross_track_error
 
+float64 p
+float64 d
 float64 steering_ang #[degree]
 float64 translation
 float64 steering
