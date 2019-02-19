@@ -33,6 +33,7 @@
 #include "mavlink_ajk/NavPVT.h"
 #include "mavlink_ajk/MAV_Mission.h"
 #include "mavlink_ajk/MAV_Modes.h"
+#include "look_ahead/Auto_Log.h"
 
 /* mavlink library */
 #include "mavlink.h"
@@ -55,14 +56,31 @@ public:
     //int lon = 133.558131 * 10000000;
     int alt = 10000;  // altitude above elliposid
     int fix_type = 0;
-    int satellites = 12; // number of satellites visible. If unknown, set to 255.
+    int satellites = 0; // number of satellites visible. If unknown, set to 255.
+
+    void auto_log_callback(const look_ahead::Auto_Log::ConstPtr& msg);
+    int current_seq = 0;
 };
 
 void Listener::gnss_callback(const mavlink_ajk::NavPVT::ConstPtr& msg){
-    lat = msg->lat * 10000000; //
+    lat = msg->lat * 10000000;
     lon = msg->lon * 10000000;
     satellites = msg->numSV;
-    
+
+    switch(msg->fix_status){
+        case 2:
+            fix_type = GPS_FIX_TYPE_RTK_FIXED;
+        case 1:
+            fix_type = GPS_FIX_TYPE_RTK_FLOAT;
+        case 0:
+            fix_type = GPS_FIX_TYPE_NO_FIX;
+    }
+    //ROS_INFO("info [%f]", msg->lat);
+}
+
+void Listener::auto_log_callback(const look_ahead::Auto_Log::ConstPtr& msg){
+    current_seq = msg->waypoint_seq;
+
     //ROS_INFO("info [%f]", msg->lat);
 }
 
@@ -137,6 +155,7 @@ int main(int argc, char **argv){
 
     Listener listener;
     ros::Subscriber sub = n.subscribe("/navpvt", 10, &Listener::gnss_callback, &listener);
+    ros::Subscriber auto_log = n.subscribe("/auto_log", 1, &Listener::auto_log_callback, &listener);
 
     ros::Publisher pub_mission = n.advertise<mavlink_ajk::MAV_Mission>("mav/mission", 1000);
     mavlink_ajk::MAV_Mission mission_rosmsg;
@@ -193,9 +212,10 @@ int main(int argc, char **argv){
 
             /* send mission_current */
             if (base_mode == MAV_MODE_GUIDED_ARMED){
-                uint32_t test_seq;
-                test_seq = test_seq +1;
-                mavlink_msg_mission_current_pack(1, 200, &mavmsg, test_seq);
+                if (listener.current_seq+1 == mission_total_seq){
+                    base_mode = MAV_MODE_GUIDED_DISARMED;
+                }
+                mavlink_msg_mission_current_pack(1, 200, &mavmsg, listener.current_seq);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
