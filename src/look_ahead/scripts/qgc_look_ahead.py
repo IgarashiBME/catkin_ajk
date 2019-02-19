@@ -13,10 +13,11 @@ from std_msgs.msg import String
 from geometry_msgs.msg import Twist
 from gazebo_msgs.msg import ModelStates
 
-# ros custom message
+# ROS custom message
 from look_ahead.msg import AJK_value
 from look_ahead.msg import Auto_Log
-from mavlink_ajk.msg import MAV_Mission.msg
+from mavlink_ajk.msg import MAV_Mission
+from mavlink_ajk.msg import MAV_Modes
 
 from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
@@ -57,6 +58,7 @@ class look_ahead():
         self.q = np.empty(4)
         self.yaw = np.pi/2
         self.pre_steering_ang = 0
+        self.mission_start = False
 
         rospy.init_node('look_ahead_following')
         rospy.on_shutdown(self.shutdown)
@@ -64,7 +66,8 @@ class look_ahead():
         # ROS callback function, receive /odom mesage
         #rospy.Subscriber('/gnss_odom', Odometry, self.odom_callback, queue_size = 1)
         rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
-        rospy.Subscriber('/mav/mission', MAV_Mission, self.truth_callback)
+        rospy.Subscriber('/mav/mission', MAV_Mission, self.load_waypoint)
+        rospy.Subscriber('/mav/modes', MAV_Modes, self.mav_modes)
         self.ajk_pub = rospy.Publisher('/ajk_auto', AJK_value, queue_size = 1)
         self.ajk_value = AJK_value()
         self.auto_log_pub = rospy.Publisher('/auto_log', Auto_Log, queue_size = 1)
@@ -98,12 +101,23 @@ class look_ahead():
         utmzone = int((msg.longitude + 180)/6) +1   # If you are on the specific location, can't be calculated. 
         convertor = Proj(proj='utm', zone=utmzone, ellps='WGS84')
         x, y = convertor(msg.longitude, msg.latitude)
+        #print x, y
+        #print msg.longitude, msg.latitude
 
+        # if msg.seq is 0, then reset variables and receive the new mission's
+        if msg.seq == 0:
+            self.waypoint_x = []
+            self.waypoint_y = []
+            self.waypoint_seq = []
+        
         self.waypoint_seq.append(msg.seq)
         self.waypoint_total_seq = msg.total_seq
         self.waypoint_x.append(x)
         self.waypoint_y.append(y) 
-        #print self.waypoint_x, self.waypoint_y
+        #print self.waypoint_total_seq, self.waypoint_seq, self.waypoint_x, self.waypoint_y
+
+    def mav_modes(self, msg):
+        self.mission_start = msg.mission_start
 
     def shutdown(self):
         print "shutdown"
@@ -111,6 +125,14 @@ class look_ahead():
     def loop(self):
         seq = 1
         while not rospy.is_shutdown():
+            # mission checker
+            if self.waypoint_total_seq == len(self.waypoint_seq) and self.waypoint_total_seq != 0:
+                continue
+
+            # mission_start checker(origin from MAV_CMD_MISSION_START)
+            if self.mission_start != True:
+                continue
+
             # if a specific variable is exists, the proceeds 
             try:
                 own_x = self.x
