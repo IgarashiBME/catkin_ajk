@@ -54,13 +54,14 @@ class Listener{
 public:
     void gnss_callback(const mavlink_ajk::NavPVT::ConstPtr& msg);
     /* sanyokiki lat 34.500682  lon 133.558131
-       yayoi     lat 35.716761  lon 139.761254  */
-    int lat = 35.717736 * 10000000;  // latitude
-    int lon = 139.759512 * 10000000;  // longitude
+       yayoi     lat 35.716761  lon 139.761254
+       tanashi   lat 35.736805  lon 139.539676*/
+    int lat = 35.7368051 * 10000000;  // latitude
+    int lon = 139.5396767 * 10000000;  // longitude
     //int lat = 34.500682 * 10000000;
     //int lon = 133.558131 * 10000000;
     int alt = 10000;  // altitude above elliposid
-    int fix_type = 0;
+    int fix_type = GPS_FIX_TYPE_RTK_FIXED;
     int satellites = 0; // number of satellites visible. If unknown, set to 255.
 
     void auto_log_callback(const look_ahead::Auto_Log::ConstPtr& msg);
@@ -295,8 +296,8 @@ int main(int argc, char **argv){
                     
                 // print and output waypoint
                 if (pre_mission_seq != mavmii.seq && mission_seq == mavmii.seq){
-                    //printf("%i, %i, %i, %.09f, %.09f\n", mavmii.seq, mission_total_seq, mavmii.command,
-                    //       waypoint_x, waypoint_y);
+                    printf("%i, %i, %i, %.09f, %.09f\n", mavmii.seq, mission_total_seq, mavmii.command,
+                           waypoint_x, waypoint_y);
                     //fstream fs;
                     //fs.open("/home/nouki/waypoint.csv", ios::out | ios::app);
                     //fs << mission_seq << ",";
