@@ -39,8 +39,12 @@
 /* mavlink library */
 #include "mavlink.h"
 
-//#define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
+/* buffer size */
 #define BUFFER_LENGTH 500
+
+/* mavlink ARDUPILOTMEGA's custom number for BASE_MODE */
+#define ARDUPILOT_GUIDED_ARMED 217
+#define ARDUPILOT_GUIDED_DISARMED 89
 
 using namespace std;
 
@@ -115,6 +119,7 @@ int main(int argc, char **argv){
     // mavlink mode
     uint16_t base_mode = 0; //MAV_MODE_GUIDED_DISARMED;
     uint16_t custom_mode = 0;
+    bool mission_start = false;
 
     // time interval
     uint64_t pre_heartbeat_time;
@@ -219,12 +224,14 @@ int main(int argc, char **argv){
             /* publish ARM-DISARM ROS message */
             modes_rosmsg.base_mode = base_mode;
             modes_rosmsg.custom_mode = custom_mode;
+            modes_rosmsg.mission_start = mission_start;
             pub_modes.publish(modes_rosmsg);
 
             /* send mission_current */
             if (base_mode == MAV_MODE_GUIDED_ARMED){
                 if (listener.current_seq+1 == mission_total_seq){
                     base_mode = MAV_MODE_GUIDED_DISARMED;
+                    mission_start = false;
                 }
                 mavlink_msg_mission_current_pack(1, 200, &mavmsg, listener.current_seq);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
@@ -288,13 +295,13 @@ int main(int argc, char **argv){
                     
                 // print and output waypoint
                 if (pre_mission_seq != mavmii.seq && mission_seq == mavmii.seq){
-                    printf("%i, %i, %i, %.09f, %.09f\n", mavmii.seq, mission_total_seq, mavmii.command,
-                           waypoint_x, waypoint_y);
-                    fstream fs;
-                    fs.open("/home/nouki/waypoint.csv", ios::out | ios::app);
-                    fs << mission_seq << ",";
-                    fs << fixed << setprecision(8) << waypoint_x << "," << waypoint_y << endl; 
-                    fs.close();
+                    //printf("%i, %i, %i, %.09f, %.09f\n", mavmii.seq, mission_total_seq, mavmii.command,
+                    //       waypoint_x, waypoint_y);
+                    //fstream fs;
+                    //fs.open("/home/nouki/waypoint.csv", ios::out | ios::app);
+                    //fs << mission_seq << ",";
+                    //fs << fixed << setprecision(8) << waypoint_x << "," << waypoint_y << endl; 
+                    //fs.close();
 
                     // publish ROS message
                     mission_rosmsg.seq = mavmii.seq;
@@ -336,28 +343,33 @@ int main(int argc, char **argv){
                 mavlink_msg_command_long_decode(&mavmsg, &mavcl);
                 printf("%i, %f", mavcl.command, mavcl.param1);
 
-                /* Send COMMAND_ACK */ 
+                /* Send COMMAND_ACK */
+                /* ARM */
                 if (mavcl.command == MAV_CMD_COMPONENT_ARM_DISARM && mavcl.param1 == 1.0){
                     mavlink_msg_command_ack_pack(1, 200, &mavmsg, MAV_CMD_COMPONENT_ARM_DISARM,
                                                  MAV_RESULT_ACCEPTED);
                     len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                     bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
-                    base_mode = MAV_MODE_GUIDED_ARMED;
+                    base_mode = ARDUPILOT_GUIDED_ARMED;
                 }
+                /* DISARM */
                 if (mavcl.command == MAV_CMD_COMPONENT_ARM_DISARM && mavcl.param1 == 0.0){
                     mavlink_msg_command_ack_pack(1, 200, &mavmsg, MAV_CMD_COMPONENT_ARM_DISARM,
                                                  MAV_RESULT_ACCEPTED);
                     len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                     bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
-                    base_mode = MAV_MODE_GUIDED_DISARMED;
+                    base_mode = ARDUPILOT_GUIDED_DISARMED;
+                    mission_start = false;
                 }
-                if (mavcl.command == MAV_CMD_REQUEST_PROTOCOL_VERSION){
+                /* MAV_CMD_MISSION_START */
+                if (mavcl.command == MAV_CMD_MISSION_START){
                     mavlink_msg_command_ack_pack(1, 200, &mavmsg, mavcl.command,
                                                  MAV_RESULT_ACCEPTED);
                     len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                     bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+                    mission_start = true;
                 }
-                if (mavcl.command == MAV_CMD_MISSION_START){
+                if (mavcl.command == MAV_CMD_REQUEST_PROTOCOL_VERSION){
                     mavlink_msg_command_ack_pack(1, 200, &mavmsg, mavcl.command,
                                                  MAV_RESULT_ACCEPTED);
                     len = mavlink_msg_to_send_buffer(buf, &mavmsg);
