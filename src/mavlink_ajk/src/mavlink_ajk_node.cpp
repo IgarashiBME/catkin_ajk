@@ -29,17 +29,18 @@
 #include "geometry_msgs/Twist.h"
 #include "std_msgs/Int16.h"
 
-/* ublox NavPVT custom ROS message */
-#include "mavlink_ajk/NavPVT.h"
+/* custom ROS messages */
 #include "mavlink_ajk/MAV_Mission.h"
 #include "mavlink_ajk/MAV_Modes.h"
 #include "look_ahead/Auto_Log.h"
+#include "ubx_analyzer/RELPOSNED.h"
+#include "mavlink_ajk/NavPVT.h"
 
 /* mavlink library */
 #include "mavlink.h"
 
 //#define BUFFER_LENGTH 2041 // minimum buffer size that can be used with qnx (I don't know why)
-#define BUFFER_LENGTH 1025
+#define BUFFER_LENGTH 500
 
 using namespace std;
 
@@ -60,6 +61,9 @@ public:
 
     void auto_log_callback(const look_ahead::Auto_Log::ConstPtr& msg);
     int current_seq = 0;
+
+    void move_base_callback(const ubx_analyzer::RELPOSNED::ConstPtr& msg);
+    int yaw;
 };
 
 void Listener::gnss_callback(const mavlink_ajk::NavPVT::ConstPtr& msg){
@@ -70,18 +74,23 @@ void Listener::gnss_callback(const mavlink_ajk::NavPVT::ConstPtr& msg){
     switch(msg->fix_status){
         case 2:
             fix_type = GPS_FIX_TYPE_RTK_FIXED;
+            break;
         case 1:
             fix_type = GPS_FIX_TYPE_RTK_FLOAT;
+            break;
         case 0:
             fix_type = GPS_FIX_TYPE_NO_FIX;
+            break;
     }
     //ROS_INFO("info [%f]", msg->lat);
 }
 
 void Listener::auto_log_callback(const look_ahead::Auto_Log::ConstPtr& msg){
     current_seq = msg->waypoint_seq;
+}
 
-    //ROS_INFO("info [%f]", msg->lat);
+void Listener::move_base_callback(const ubx_analyzer::RELPOSNED::ConstPtr& msg){
+    yaw = msg->QGC_heading;
 }
 
 int main(int argc, char **argv){
@@ -156,6 +165,7 @@ int main(int argc, char **argv){
     Listener listener;
     ros::Subscriber sub = n.subscribe("/navpvt", 10, &Listener::gnss_callback, &listener);
     ros::Subscriber auto_log = n.subscribe("/auto_log", 1, &Listener::auto_log_callback, &listener);
+    ros::Subscriber move_base = n.subscribe("/relposned", 1, &Listener::move_base_callback, &listener);
 
     ros::Publisher pub_mission = n.advertise<mavlink_ajk::MAV_Mission>("/mav/mission", 1000);
     mavlink_ajk::MAV_Mission mission_rosmsg;
@@ -168,7 +178,7 @@ int main(int argc, char **argv){
         if (microsSinceEpoch() - pre_heartbeat_time > heartbeat_interval){
             /* print */
             //std::cout << microsSinceEpoch() - pre_time << std::endl;
-            //std::cout << listener.current_seq << std::endl; 
+            //std::cout << listener.fix_type << std::endl; 
 
             /*Send Heartbeat */
             //mavlink_msg_heartbeat_pack(1, 1, &mavmsg, type, autopilot, 
@@ -193,7 +203,7 @@ int main(int argc, char **argv){
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
             /* Send attitude */ 
-            mavlink_msg_attitude_pack(1, 200, &mavmsg, microsSinceEpoch(), 1.2, 1.7, 3.14, 0.01, 0.02, 0.03);
+            mavlink_msg_attitude_pack(1, 200, &mavmsg, microsSinceEpoch(), 0, 0, 3.14, 0.01, 0.02, 0.03);
             len = mavlink_msg_to_send_buffer(buf, &mavmsg);
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
