@@ -121,10 +121,9 @@ class ublox():
 
             # calculate heading using the NE component
             heading = np.arctan2((relPosN+relPosHPN), (relPosE+relPosHPE))
-            #heading = heading +np.pi/2
-            #if heading > np.pi:
-            #    heading = heading - 2*np.pi
-            #heading = np.arctan2((relPosE+relPosHPE), (relPosN+relPosHPN))
+            QGC_heading = -heading +np.pi/2
+            if QGC_heading > np.pi:
+                QGC_heading = QGC_heading - np.pi/2
 
             # Publish RELPOSNED
             self.relposned.iTOW = iTOW
@@ -140,6 +139,7 @@ class ublox():
             self.relposned.accD = accD
             self.relposned.heading_rad = heading
             self.relposned.heading_deg = heading/np.pi *180
+            self.relposned.QGC_heading = QGC_heading
             self.pub_relposned.publish(self.relposned)
 
             # convert to quaternion
