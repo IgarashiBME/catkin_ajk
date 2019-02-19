@@ -157,17 +157,18 @@ int main(int argc, char **argv){
     ros::Subscriber sub = n.subscribe("/navpvt", 10, &Listener::gnss_callback, &listener);
     ros::Subscriber auto_log = n.subscribe("/auto_log", 1, &Listener::auto_log_callback, &listener);
 
-    ros::Publisher pub_mission = n.advertise<mavlink_ajk::MAV_Mission>("mav/mission", 1000);
+    ros::Publisher pub_mission = n.advertise<mavlink_ajk::MAV_Mission>("/mav/mission", 1000);
     mavlink_ajk::MAV_Mission mission_rosmsg;
 
-    ros::Publisher pub_modes = n.advertise<mavlink_ajk::MAV_Modes>("mav/modes", 1);
+    ros::Publisher pub_modes = n.advertise<mavlink_ajk::MAV_Modes>("/mav/modes", 1);
     mavlink_ajk::MAV_Modes modes_rosmsg;
 
     while (ros::ok()){
         /* time interval */        
         if (microsSinceEpoch() - pre_heartbeat_time > heartbeat_interval){
-            /* time print */
+            /* print */
             //std::cout << microsSinceEpoch() - pre_time << std::endl;
+            //std::cout << listener.current_seq << std::endl; 
 
             /*Send Heartbeat */
             //mavlink_msg_heartbeat_pack(1, 1, &mavmsg, type, autopilot, 
@@ -197,7 +198,7 @@ int main(int argc, char **argv){
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
             /* Send GPS */
-            mavlink_msg_gps_raw_int_pack(1, 200, &mavmsg, 0, GPS_FIX_TYPE_RTK_FIXED, 
+            mavlink_msg_gps_raw_int_pack(1, 200, &mavmsg, 0, listener.fix_type, 
                                          listener.lat, listener.lon, listener.alt, 65535, 65535, 
                                          65535, 65535, listener.satellites);
             len = mavlink_msg_to_send_buffer(buf, &mavmsg);
