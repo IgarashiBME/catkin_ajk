@@ -41,14 +41,14 @@ FB_OPTIMUM = 220
 LR_OPTIMUM = 60
 
 # gain
-KP = 0.7
-KD = 1.0
+KP = 0.05
+KD = 0.005
 
 # simulator
 CMD_LINEAR_OPT = 0.55
 CMD_ANGULAR_RIGHT = -0.5
 CMD_ANGULAR_LEFT = 0.5
-CMD_ANGULAR_K = 2
+CMD_ANGULAR_K = 1
 
 # frequency [Hz]
 frequency = 10
@@ -148,13 +148,14 @@ class look_ahead():
         while not rospy.is_shutdown():
             # mission checker
             if self.waypoint_total_seq != len(self.waypoint_seq) or self.waypoint_total_seq == 0:
-                print "mission_checker"
+                seq = 1
+                rospy.loginfo("mission_checker")
                 time.sleep(1)
                 continue
 
             # mission_start checker(origin from MAV_CMD_MISSION_START)
             if self.mission_start != True:
-                print "start_checker"
+                rospy.loginfo("mission_start_checker")
                 time.sleep(1)
                 continue
 
@@ -228,13 +229,13 @@ class look_ahead():
             #print steering_ang/np.pi*180.0
 
             # calculate the steering_value
-            p = KP *steering_ang/180
-            d = KD *self.pre_steering_ang/180
-            pd_value = p + d
+            p = KP *steering_ang
+            d = KD *self.pre_steering_ang
+            pd_value = p - d
             self.pre_steering_ang = steering_ang
 
-            ajk_steering = STEERING_NEUTRAL +LR_OPTIMUM*pd_value
-            ajk_translation = TRANSLATION_NEUTRAL +FB_OPTIMUM*translation
+            ajk_steering = STEERING_NEUTRAL +LR_OPTIMUM *pd_value
+            ajk_translation = TRANSLATION_NEUTRAL +FB_OPTIMUM *translation
 
             # If the yaw error is large, pivot turn.
             if abs(steering_ang) > yaw_tolerance:
@@ -275,11 +276,14 @@ class look_ahead():
             self.auto_log_pub.publish(self.auto_log)
 
             print "sequence:", seq
-            print "transform_wx:", wp_x_tf, "transform_wy:", wp_y_tf
-            print "transform_own_x:", own_x_tf, "transform_own_y:", own_y_tf
+            print "target_x:", wp_x_tf, "target_y:", wp_y_tf
+            print "own_x:", own_x_tf, "own_y:", own_y_tf
             print "cross_track_error:", own_y_tf
-            print front_steering_ang, rear_steering_ang
-            print steering_ang, pd_value
+            print "front_ang:", front_steering_ang, "rear_ang", rear_steering_ang
+            print "steering_ang:", steering_ang
+            print "p:", p
+            print "d:", d
+            print "pd:", pd_value 
             print self.ajk_value.translation, self.ajk_value.steering
             print
 
@@ -302,6 +306,8 @@ class look_ahead():
                 self.ajk_value.translation = TRANSLATION_NEUTRAL
                 self.ajk_value.steering = STEERING_NEUTRAL
                 self.ajk_pub.publish(self.ajk_value)
+
+                seq = 1
                 print "mission_end"
                 break
             #print
