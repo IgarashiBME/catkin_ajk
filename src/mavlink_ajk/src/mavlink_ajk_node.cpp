@@ -40,7 +40,7 @@
 #include "mavlink.h"
 
 /* buffer size */
-#define BUFFER_LENGTH 500
+#define BUFFER_LENGTH 300
 
 /* mavlink ARDUPILOTMEGA's custom number for BASE_MODE */
 #define ARDUPILOT_GUIDED_ARMED 217
@@ -129,6 +129,9 @@ int main(int argc, char **argv){
     uint64_t pre_request_time;
     int request_interval = 30000; // 0.05 second
 
+    uint64_t last_gcs_heartbeat_time;
+    int gcs_heartbeat_interval = 5000000; // 5 second
+
     // Change the target ip if parameter was given
     strcpy(target_ip, "127.0.0.1");
     if (argc == 2){
@@ -180,17 +183,13 @@ int main(int argc, char **argv){
     mavlink_ajk::MAV_Modes modes_rosmsg;
 
     while (ros::ok()){
-        /* time interval */        
+        /* time interval */
         if (microsSinceEpoch() - pre_heartbeat_time > heartbeat_interval){
             /* print */
             //std::cout << microsSinceEpoch() - pre_time << std::endl;
             //std::cout << listener.fix_type << std::endl; 
 
             /*Send Heartbeat */
-            //mavlink_msg_heartbeat_pack(1, 1, &mavmsg, type, autopilot, 
-            //                           base_mode, custom_mode, system_status);
-            //mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_QUADROTOR, MAV_AUTOPILOT_PX4, 
-            //                           MAV_MODE_GUIDED_ARMED, 3, MAV_STATE_STANDBY);
             mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_GROUND_ROVER, MAV_AUTOPILOT_ARDUPILOTMEGA, 
                                        base_mode, custom_mode, MAV_STATE_STANDBY);
             len = mavlink_msg_to_send_buffer(buf, &mavmsg);
@@ -229,9 +228,9 @@ int main(int argc, char **argv){
             pub_modes.publish(modes_rosmsg);
 
             /* send mission_current */
-            if (base_mode == MAV_MODE_GUIDED_ARMED){
+            if (base_mode == ARDUPILOT_GUIDED_ARMED){
                 if (listener.current_seq+1 == mission_total_seq){
-                    base_mode = MAV_MODE_GUIDED_DISARMED;
+                    base_mode = ARDUPILOT_GUIDED_DISARMED;
                     mission_start = false;
                 }
                 mavlink_msg_mission_current_pack(1, 200, &mavmsg, listener.current_seq);
@@ -239,6 +238,13 @@ int main(int argc, char **argv){
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
             }
+        }
+
+        /* when the gcs heartbeat was stopped, then DISARM and mission_start is False */
+        if (microsSinceEpoch() - last_gcs_heartbeat_time > gcs_heartbeat_interval){
+            std::cout << "gcs_stopped\n" << std::endl;
+            base_mode = ARDUPILOT_GUIDED_DISARMED;
+            mission_start = false;            
         }
 
         /* Mission Request */
@@ -273,6 +279,10 @@ int main(int argc, char **argv){
                            mavmsg.sysid, mavmsg.compid, mavmsg.len, mavmsg.msgid);
                 }
             }
+            if (mavmsg.msgid == 0){
+                last_gcs_heartbeat_time = microsSinceEpoch();
+            }
+
             if (mavmsg.msgid == 44){
                 mavlink_mission_count_t mavmc;
                 printf("mission count was received\n");
