@@ -42,8 +42,8 @@ class controller():
         self.translation_value = TRANSLATION_NEUTRAL
         self.steering_value = STEERING_NEUTRAL
         self.manual_stamp = 0
-        self.auto_translation_value = TRANSLATION_NEUTRAL
-        self.auto_steering_value = STEERING_NEUTRAL
+        self.auto_translation = TRANSLATION_NEUTRAL
+        self.auto_steering = STEERING_NEUTRAL
         self.auto_stamp = 0
 
         # initialize serial port
@@ -71,13 +71,13 @@ class controller():
         self.human_proximity_value = data.proximity_value"""
 
     def serial_write(self, translation, steering, engine_status):
-        try:
+        """try:
             if self.auto_translation != 0 and self.auto_steering != 0:
-                self.ControlCommand = START_BYTE +auto_translation +auto_steering +ENGINE_SPEED +engine_status \
+                self.ControlCommand = START_BYTE +translation +steering +ENGINE_SPEED +engine_status \
                                       +AUTONOMOUS_OFF +MAXSPEED_LIMIT +CORRECTION_A +CORRECTION_B \
                                       +LINE_FEED +CARRIAGE_RETURN                
         except AttributeError:
-            pass
+            pass"""
         self.ControlCommand = START_BYTE +translation +steering +ENGINE_SPEED +engine_status \
                               +AUTONOMOUS_OFF +MAXSPEED_LIMIT +CORRECTION_A +CORRECTION_B \
                               +LINE_FEED +CARRIAGE_RETURN
@@ -124,7 +124,7 @@ class controller():
         if now - self.manual_stamp < CONTROL_SIGNAL_INTERVAL:
             self.serial_write(str(self.translation_value), str(self.steering_value), engine_status)
         elif now - self.auto_stamp < CONTROL_SIGNAL_INTERVAL:
-            self.serial_write(str(self.auto_translation_value), str(self.auto_steering_value), engine_status)
+            self.serial_write(str(self.auto_translation), str(self.auto_steering), engine_status)
         else:
             self.safety_stop()
             self.serial_write(str(self.translation_value), str(self.steering_value), engine_status)            
@@ -148,7 +148,7 @@ class controller():
     def ajk_auto_subs(self, msg):
         self.auto_translation = '{:04x}'.format(msg.translation)
         self.auto_steering = '{:04x}'.format(msg.steering)
-        self.auto_stamp = msg.stamp.secs +msg.stamp.nsecs/1000000000
+        self.auto_stamp = msg.stamp.secs +msg.stamp.nsecs/1000000000.0
 
         # upper case is required for sanyo command
         if self.auto_translation.islower() == True:
