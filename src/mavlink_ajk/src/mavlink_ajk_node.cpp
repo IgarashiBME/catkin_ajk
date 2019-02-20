@@ -68,7 +68,7 @@ public:
     int current_seq = 0;
 
     void move_base_callback(const ubx_analyzer::RELPOSNED::ConstPtr& msg);
-    int yaw;
+    double yaw;
 };
 
 void Listener::gnss_callback(const mavlink_ajk::NavPVT::ConstPtr& msg){
@@ -209,7 +209,7 @@ int main(int argc, char **argv){
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
             /* Send attitude */ 
-            mavlink_msg_attitude_pack(1, 200, &mavmsg, microsSinceEpoch(), 0, 0, 3.14, 0.01, 0.02, 0.03);
+            mavlink_msg_attitude_pack(1, 200, &mavmsg, microsSinceEpoch(), 0, 0, listener.yaw, 0.01, 0.02, 0.03);
             len = mavlink_msg_to_send_buffer(buf, &mavmsg);
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		
