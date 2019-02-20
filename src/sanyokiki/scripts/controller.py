@@ -47,7 +47,7 @@ class controller():
         self.auto_stamp = 0
 
         # initialize serial port
-        """try:
+        try:
             self.ser=serial.Serial(
                 port = '/dev/serial/by-id/usb-TOCOS_TWE-Lite-R_AHXGUC5S-if00-port0',
                 baudrate = 115200,
@@ -56,7 +56,7 @@ class controller():
             )
         except serial.serialutil.SerialException:
             rospy.logerr("port not found")
-            sys.exit(0)"""
+            sys.exit(0)
 
         rospy.on_shutdown(self.shutdown)
         print "ready to controller"
