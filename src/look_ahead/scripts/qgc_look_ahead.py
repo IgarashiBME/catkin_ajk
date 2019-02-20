@@ -44,6 +44,12 @@ LR_OPTIMUM = 60
 KP = 0.7
 KD = 1.0
 
+# simulator
+CMD_LINEAR_OPT = 0.55
+CMD_ANGULAR_RIGHT = -0.5
+CMD_ANGULAR_LEFT = 0.5
+CMD_ANGULAR_K = 2
+
 # frequency [Hz]
 frequency = 10
 
@@ -64,14 +70,16 @@ class look_ahead():
         rospy.on_shutdown(self.shutdown)
 
         # ROS callback function, receive /odom mesage
-        #rospy.Subscriber('/gnss_odom', Odometry, self.odom_callback, queue_size = 1)
-        rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
+        rospy.Subscriber('/gnss_odom', Odometry, self.odom_callback, queue_size = 1)
+        #rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
         rospy.Subscriber('/mav/mission', MAV_Mission, self.load_waypoint)
         rospy.Subscriber('/mav/modes', MAV_Modes, self.mav_modes)
         self.ajk_pub = rospy.Publisher('/ajk_auto', AJK_value, queue_size = 1)
         self.ajk_value = AJK_value()
         self.auto_log_pub = rospy.Publisher('/auto_log', Auto_Log, queue_size = 1)
         self.auto_log = Auto_Log()
+        self.cmdvel_pub = rospy.Publisher('/sim_ajk/diff_drive_controller/cmd_vel', Twist, queue_size = 1)
+        self.cmdvel = Twist()
 
     def odom_callback(self, msg):
         self.x = msg.pose.pose.position.x
@@ -84,16 +92,16 @@ class look_ahead():
         self.q[3] = msg.pose.pose.orientation.w
 
     # truth position of simulator
-    def truth_callback(self, msg):
-        for i, name in enumerate(msg.name):
-            if name == "sim_ajk":
-                self.x = msg.pose[i].position.x
-                self.y = msg.pose[i].position.y
-                # vehicle's quaternion data in /odom (odometry of ROS message)
-                self.q[0] = msg.pose[i].orientation.x
-                self.q[1] = msg.pose[i].orientation.y
-                self.q[2] = msg.pose[i].orientation.z
-                self.q[3] = msg.pose[i].orientation.w
+    #def truth_callback(self, msg):
+    #    for i, name in enumerate(msg.name):
+    #        if name == "sim_ajk":
+    #            self.x = msg.pose[i].position.x
+    #            self.y = msg.pose[i].position.y
+    #            # vehicle's quaternion data in /odom (odometry of ROS message)
+    #            self.q[0] = msg.pose[i].orientation.x
+    #            self.q[1] = msg.pose[i].orientation.y
+    #            self.q[2] = msg.pose[i].orientation.z
+    #            self.q[3] = msg.pose[i].orientation.w
 
     # load waypoint list
     def load_waypoint(self, msg):
@@ -119,6 +127,19 @@ class look_ahead():
     def mav_modes(self, msg):
         self.mission_start = msg.mission_start
 
+    def cmdvel_publisher(self, steering_ang, translation, pd):
+        if abs(steering_ang) > yaw_tolerance:
+            if steering_ang >= 0:
+                self.cmdvel.linear.x = 0
+                self.cmdvel.angular.z = CMD_ANGULAR_LEFT
+            else:
+                self.cmdvel.linear.x = 0
+                self.cmdvel.angular.z = CMD_ANGULAR_RIGHT
+        else:
+            self.cmdvel.linear.x = CMD_LINEAR_OPT*translation
+            self.cmdvel.angular.z = pd *CMD_ANGULAR_K
+        self.cmdvel_pub.publish(self.cmdvel)
+
     def shutdown(self):
         print "shutdown"
 
@@ -126,11 +147,15 @@ class look_ahead():
         seq = 1
         while not rospy.is_shutdown():
             # mission checker
-            if self.waypoint_total_seq == len(self.waypoint_seq) and self.waypoint_total_seq != 0:
+            if self.waypoint_total_seq != len(self.waypoint_seq) or self.waypoint_total_seq == 0:
+                print "mission_checker"
+                time.sleep(1)
                 continue
 
             # mission_start checker(origin from MAV_CMD_MISSION_START)
             if self.mission_start != True:
+                print "start_checker"
+                time.sleep(1)
                 continue
 
             # if a specific variable is exists, the proceeds 
@@ -229,6 +254,9 @@ class look_ahead():
 
             #print wp_x_adj, wp_y_adj, tf_angle/np.pi*180
 
+            # for simulator
+            self.cmdvel_publisher(steering_ang, translation, pd_value)
+
             # publish autonomous log
             self.auto_log.stamp = rospy.Time.now()
             self.auto_log.waypoint_seq = seq
@@ -246,13 +274,14 @@ class look_ahead():
             self.auto_log.steering = self.ajk_value.steering
             self.auto_log_pub.publish(self.auto_log)
 
-            """print "sequence:", seq
+            print "sequence:", seq
             print "transform_wx:", wp_x_tf, "transform_wy:", wp_y_tf
             print "transform_own_x:", own_x_tf, "transform_own_y:", own_y_tf
-            print "cross_track_error:", d
+            print "cross_track_error:", own_y_tf
             print front_steering_ang, rear_steering_ang
             print steering_ang, pd_value
-            print self.ajk_value.translation, self.ajk_value.steering"""
+            print self.ajk_value.translation, self.ajk_value.steering
+            print
 
             # when reaching the look-ahead distance, read the next waypoint.
             if (wp_x_tf - own_x_tf) < x_tolerance:
