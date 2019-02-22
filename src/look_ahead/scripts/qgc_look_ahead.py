@@ -237,6 +237,12 @@ class look_ahead():
             ajk_steering = STEERING_NEUTRAL +LR_OPTIMUM *pd_value
             ajk_translation = TRANSLATION_NEUTRAL +FB_OPTIMUM *translation
 
+            # Restriction of ajk_steering
+            if ajk_steering > TRANSLATION_NEUTRAL + LR_OPTIMUM:
+                  ajk_steering = TRANSLATION_NEUTRAL + LR_OPTIMUM
+            elif ajk_steering < TRANSLATION_NEUTRAL - LR_OPTIMUM:
+                  ajk_steering = TRANSLATION_NEUTRAL - LR_OPTIMUM
+
             # If the yaw error is large, pivot turn.
             if abs(steering_ang) > yaw_tolerance:
                 if steering_ang >= 0:
