@@ -123,7 +123,7 @@ class ublox():
             heading = np.arctan2((relPosN+relPosHPN), (relPosE+relPosHPE))
             QGC_heading = -heading +np.pi/2
             if QGC_heading > np.pi:
-                QGC_heading = QGC_heading - np.pi/2
+                QGC_heading = QGC_heading - np.pi*2
 
             # Publish RELPOSNED
             self.relposned.iTOW = iTOW
