@@ -33,7 +33,8 @@ WRITE_SLEEP = 0.060 # 0.060 seconds
 
 # interval
 PRINT_INTERVAL = 1 # 1 seconds
-CONTROL_SIGNAL_INTERVAL = 0.3 # The time since the manual and auto signal stopped, 0.3 seconds
+MANUAL_SIGNAL_INTERVAL = 0.3 # The time since the manual and auto signal stopped, 0.3 seconds
+AUTO_SIGNAL_INTERVAL = 1 # The time since the manual and auto signal stopped, 0.3 seconds
 
 class controller():
     def __init__(self):
@@ -121,9 +122,9 @@ class controller():
             engine_status = ENGINE_OFF
 
         now = rospy.Time.now().secs + rospy.Time.now().nsecs/1000000000.0
-        if now - self.manual_stamp < CONTROL_SIGNAL_INTERVAL:
+        if now - self.manual_stamp < MANUAL_SIGNAL_INTERVAL:
             self.serial_write(str(self.translation_value), str(self.steering_value), engine_status)
-        elif now - self.auto_stamp < CONTROL_SIGNAL_INTERVAL:
+        elif now - self.auto_stamp < AUTO_SIGNAL_INTERVAL:
             self.serial_write(str(self.auto_translation), str(self.auto_steering), engine_status)
         else:
             self.safety_stop()
