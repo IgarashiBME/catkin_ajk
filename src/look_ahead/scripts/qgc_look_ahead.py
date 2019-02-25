@@ -235,11 +235,13 @@ class look_ahead():
             self.pre_steering_ang = steering_ang
 
             ajk_steering = STEERING_NEUTRAL +LR_OPTIMUM *pd_value
+            if translation < 0:
+                ajk_steering = STEERING_NEUTRAL -LR_OPTIMUM *pd_value 
             ajk_translation = TRANSLATION_NEUTRAL +FB_OPTIMUM *translation
 
             # Restriction of ajk_steering
             if ajk_steering > TRANSLATION_NEUTRAL + LR_OPTIMUM:
-                  ajk_steering = TRANSLATION_NEUTRAL + LR_OPTIMUM
+                   ajk_steering = TRANSLATION_NEUTRAL + LR_OPTIMUM
             elif ajk_steering < TRANSLATION_NEUTRAL - LR_OPTIMUM:
                   ajk_steering = TRANSLATION_NEUTRAL - LR_OPTIMUM
 
