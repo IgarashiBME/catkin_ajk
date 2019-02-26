@@ -2,20 +2,18 @@
 
 ## 必要環境  
 Robot Operating Systemのインストール
-  
 
 
 ## 必要な機器  
 twelite（無線モジュール）  
-Bosch BNO055（IMU）  
-Ublox C94-M8P（GNSSモジュール）  
-  
+Ublox C94-M8P（RTK用のGNSS受信機）
+Ublox C94-M8P or NEO-M8P（Moving-base用のGNSS受信機）
+Bosch BNO055（IMU）
 
 
 ## インストール  
 このレポジトリはROSのワークスペースとなっている。  
 ROSのテキストを参考にして、catkin_makeをすること。  
-  
 
 
 ## 草刈り機への通信  
@@ -25,53 +23,35 @@ roslaunch sanyokiki ajk.launch
 ターミナル内で" o "を入力し、エンターキーを押すとエンジン始動。  
 " p "を入力するとエンジン停止。  
   
-このプログラムを起動すれば、cmd_velの配信により走行できます。  
-linear.xは0.55、angular.zは0.45くらいの数値がちょうど良い感じです。  
-  
-## 草刈り機のマニュアル操作  
-下記のコマンドを実行  
-rosrun sanyokiki key.py  
-  
-w,a,s,dなどのキー入力により草刈り機を操作できます。  
-  
+w,a,s,dなどのキー入力により草刈り機を操作できます。
+w:前進、a:左旋回、s:後進、d:右旋回
 
 
-## GNSSの利用  
-C94-M8Pを接続し、下記のコマンドを実行する。  
-rosrun ubx_analyzer navpvt.py  
+## RTK-GNSS、Moving-baseとIMUの利用  
+RTKのRoverとMoving-baseのRoverをPCに接続し、下記のコマンドを実行する。  
+roslaunch ubx_analyzer imu_moving_base.launch
   
-navpvt.pyによってUBX-NAV-PVTのプロトコルが読みこまれ、  
-/utm　(UTM座標)、/gnss (緯度経度)、/gpstime (GPSタイム) の  
-メッセージが配信されます。
+/gnss_odom　(UTM座標とMoving_baseの絶対方位)、/relposned（UBX-NAV-RELPOSNED）、  
+/navpvt（UBX-NAV-PVT）  
+等のメッセージが配信されます。
   
-
-
-## IMUの利用  
-BNO055を接続し、下記のコマンドを実行する。  
-roslaunch imu_jetson.launch  
   
-
-
-## GNSSの絶対座標による機体角の取得（やや不安定）  
+## MAVLinkの利用   
 下記のコマンドを実行する。  
-roslaunch gnss_yaw gnss.launch  
+rosrun mavlink_ajk mavlink_ajk_node  
   
-そして機体をまっすぐ前進させる。
-上手くいけば、/gnss_yawというUTM座標の変化から求められた
-機体角のメッセージが配信される（直進性が低いと配信されない）。
-
-IMUとGNSSが正常であれば、UTM座標と機体角が統合された/gnss_imuメッセージが配信される。  
+このノードを立ち上げた事により
+QGCなどのGCSソフトでUDP接続すれば、ウェイポイント機能を利用できる。
   
-
-
-## 自律走行とウェイポイント  
-上記の項目を全て実行した後、下記のコマンドを実行する。  
-rosrun pid_navi route_write.py  
   
-任意の場所に草刈り機を移動し、ターミナル内の指示に従って、  
-ウェイポイントを登録する。  
-route.csvが保存されたらスタート位置に移動し、下記のコマンドを実行する。  
-rosrun pid_navi mower_rtrip.py  
+## 自律走行ノードの起動
+下記のコマンドを実行する。  
+rosrun look_ahead qgc_look_ahead.py  
+  
+  
+## 自律走行
+以上全てを実行したうえで、QGCよりウェイポイントを送信。
+MISSION STARTを実行すれば、自律走行が開始する。
 
-自律走行が開始されるはずである。  
+
 
