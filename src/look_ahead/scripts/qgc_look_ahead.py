@@ -283,17 +283,17 @@ class look_ahead():
             self.auto_log.steering = self.ajk_value.steering
             self.auto_log_pub.publish(self.auto_log)
 
-            print "sequence:", seq
-            print "target_x:", wp_x_tf, "target_y:", wp_y_tf
-            print "own_x:", own_x_tf, "own_y:", own_y_tf
-            print "cross_track_error:", own_y_tf
-            print "front_ang:", front_steering_ang, "rear_ang", rear_steering_ang
-            print "steering_ang:", steering_ang
-            print "p:", p
-            print "d:", d
-            print "pd:", pd_value 
-            print self.ajk_value.translation, self.ajk_value.steering
-            print
+            #print "sequence:", seq
+            #print "target_x:", wp_x_tf, "target_y:", wp_y_tf
+            #print "own_x:", own_x_tf, "own_y:", own_y_tf
+            #print "cross_track_error:", own_y_tf
+            #print "front_ang:", front_steering_ang, "rear_ang", rear_steering_ang
+            #print "steering_ang:", steering_ang
+            #print "p:", p
+            #print "d:", d
+            #print "pd:", pd_value 
+            #print self.ajk_value.translation, self.ajk_value.steering
+            #print
 
             # when reaching the look-ahead distance, read the next waypoint.
             if (wp_x_tf - own_x_tf) < x_tolerance:
