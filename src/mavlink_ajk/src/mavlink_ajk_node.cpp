@@ -243,7 +243,7 @@ int main(int argc, char **argv){
 
         /* when the gcs heartbeat was stopped, then DISARM and mission_start is False */
         if (microsSinceEpoch() - last_gcs_heartbeat_time > gcs_heartbeat_interval){
-            std::cout << "gcs_stopped\n" << std::endl;
+            std::cout << "GCS signal was interrupted\n" << std::endl;
             base_mode = ARDUPILOT_GUIDED_DISARMED;
             mission_start = false;            
         }
