@@ -1,0 +1,20 @@
+<launch>
+  <arg name="rtk_config_file" default="$(find px4rover_launcher)/config/rtk_rover.yaml"/> 
+  <node pkg="ubx_analyzer" type="pvthp.py" name="pvthp" output="screen">
+    <rosparam file="$(arg rtk_config_file)" command="load"/>
+  </node>
+
+  <arg name="mb_config_file" default="$(find px4rover_launcher)/config/moving_base_rover.yaml"/> 
+  <node pkg="ubx_analyzer" type="moving_base.py" name="moving_base" output="screen">
+    <rosparam file="$(arg mb_config_file)" command="load"/>
+  </node>
+
+  <node pkg="mavlink_ajk" type="mavlink_ajk_node" name="mavlink_ajk" output="screen">
+  </node>
+
+  <node pkg="look_ahead" type="qgc_look_ahead.py" name="qgc_look_ahead" output="screen">
+    <remap from="/sim_ajk/diff_drive_controller/cmd_vel" to="/cmd_vel"/>
+  </node>
+</launch>
+
+

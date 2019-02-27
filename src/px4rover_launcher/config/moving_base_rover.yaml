@@ -1,0 +1,2 @@
+# USB port
+port: /dev/serial/by-path/platform-tegra-xhci-usb-0:3.2:1.0
