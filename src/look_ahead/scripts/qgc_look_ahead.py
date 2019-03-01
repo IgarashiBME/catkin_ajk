@@ -143,7 +143,7 @@ class look_ahead():
         # Angular limit
         if self.cmdvel.angular.z > CMD_ANGULAR_LIMIT:
             self.cmdvel.angular.z = CMD_ANGULAR_LIMIT
-        else self.cmdvel.angular.z < -CMD_ANGULAR_LIMIT:
+        elif self.cmdvel.angular.z < -CMD_ANGULAR_LIMIT:
             self.cmdvel.angular.z = -CMD_ANGULAR_LIMIT
         self.cmdvel_pub.publish(self.cmdvel)
 
