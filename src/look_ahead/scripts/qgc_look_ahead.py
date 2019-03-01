@@ -44,11 +44,12 @@ LR_OPTIMUM = 60
 KP = 0.05
 KD = 0.005
 
-# simulator
+# for simulator or test vehicle
 CMD_LINEAR_OPT = 0.55
 CMD_ANGULAR_RIGHT = -0.5
 CMD_ANGULAR_LEFT = 0.5
-CMD_ANGULAR_K = 1
+CMD_ANGULAR_K = 0.5
+CMD_ANGULAR_LIMIT = 1
 
 # frequency [Hz]
 frequency = 10
@@ -138,6 +139,12 @@ class look_ahead():
         else:
             self.cmdvel.linear.x = CMD_LINEAR_OPT*translation
             self.cmdvel.angular.z = pd *CMD_ANGULAR_K
+
+        # Angular limit
+        if self.cmdvel.angular.z > CMD_ANGULAR_LIMIT:
+            self.cmdvel.angular.z = CMD_ANGULAR_LIMIT
+        else self.cmdvel.angular.z < -CMD_ANGULAR_LIMIT:
+            self.cmdvel.angular.z = -CMD_ANGULAR_LIMIT
         self.cmdvel_pub.publish(self.cmdvel)
 
     def shutdown(self):
@@ -315,6 +322,9 @@ class look_ahead():
                 self.ajk_value.steering = STEERING_NEUTRAL
                 self.ajk_pub.publish(self.ajk_value)
 
+                self.cmdvel.linear.x = 0
+                self.cmdvel.angular.z = 0
+                self.cmdvel_pub.publish(self.cmdvel)
                 seq = 1
                 print "mission_end"
                 break
