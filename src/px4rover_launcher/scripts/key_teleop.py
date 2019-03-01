@@ -73,11 +73,10 @@ def teleop():
         elif str(kb) == "l":    # angular speed decrease
             angular_value = angular_value - 0.05
 
-
         elif kb == None:
             twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0;
             twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0;
-            pub.publish(twist)       
+            pub.publish(twist)
 
         time.sleep(0.01)
 
