@@ -34,6 +34,7 @@
 #include "mavlink_ajk/MAV_Modes.h"
 #include "look_ahead/Auto_Log.h"
 #include "ubx_analyzer/RELPOSNED.h"
+#include "ubx_analyzer/UTMHP.h"
 #include "mavlink_ajk/NavPVT.h"
 
 /* mavlink library */
@@ -46,13 +47,17 @@
 #define ARDUPILOT_GUIDED_ARMED 217
 #define ARDUPILOT_GUIDED_DISARMED 89
 
+/* Interval */
+#define COMMON_INTERVAL 1000000
+#define LIGHT_INTERVAL 100000
+
 using namespace std;
 
 uint64_t microsSinceEpoch();
 
 class Listener{
 public:
-    void gnss_callback(const mavlink_ajk::NavPVT::ConstPtr& msg);
+    void gnss_callback(const ubx_analyzer::UTMHP::ConstPtr& msg);
     /* sanyokiki lat 34.500682  lon 133.558131
        yayoi     lat 35.716761  lon 139.761254
        tanashi   lat 35.736805  lon 139.539676
@@ -72,9 +77,9 @@ public:
     double yaw;
 };
 
-void Listener::gnss_callback(const mavlink_ajk::NavPVT::ConstPtr& msg){
-    lat = msg->lat * 10000000;
-    lon = msg->lon * 10000000;
+void Listener::gnss_callback(const ubx_analyzer::UTMHP::ConstPtr& msg){
+    lat = msg->latHp * 10000000;
+    lon = msg->lonHp * 10000000;
     satellites = msg->numSV;
 
     switch(msg->fix_status){
@@ -118,12 +123,12 @@ int main(int argc, char **argv){
     unsigned int mission_seq = 0;
     int pre_mission_seq = -1;
 
-    // mavlink mode
-    uint16_t base_mode = 0; //MAV_MODE_GUIDED_DISARMED;
-    uint16_t custom_mode = 0;
+    /* mavlink mode */
+    uint64_t base_mode = 0; //MAV_MODE_GUIDED_DISARMED;
+    uint64_t custom_mode = 0;
     bool mission_start = false;
 
-    // time interval
+    /* time interval */
     uint64_t pre_heartbeat_time;
     int heartbeat_interval = 900000; //0.9 second
 
@@ -132,6 +137,14 @@ int main(int argc, char **argv){
 
     uint64_t last_gcs_heartbeat_time;
     int gcs_heartbeat_interval = 5000000; // 5 second
+
+    /* parameter protocol */
+    bool parameter_set = false;
+    char* parameter_id;
+    float parameter_value;
+    uint8_t parameter_type;
+    uint16_t parameter_count;
+    uint16_t parameter_index;
 
     // Change the target ip if parameter was given
     strcpy(target_ip, "127.0.0.1");
@@ -173,7 +186,7 @@ int main(int argc, char **argv){
     ros::NodeHandle n;
 
     Listener listener;
-    ros::Subscriber sub = n.subscribe("/navpvt", 10, &Listener::gnss_callback, &listener);
+    ros::Subscriber sub = n.subscribe("/utm_hp", 10, &Listener::gnss_callback, &listener);
     ros::Subscriber auto_log = n.subscribe("/auto_log", 1, &Listener::auto_log_callback, &listener);
     ros::Subscriber move_base = n.subscribe("/relposned", 1, &Listener::move_base_callback, &listener);
 
@@ -193,6 +206,8 @@ int main(int argc, char **argv){
             /*Send Heartbeat */
             mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_GROUND_ROVER, MAV_AUTOPILOT_ARDUPILOTMEGA, 
                                        base_mode, custom_mode, MAV_STATE_STANDBY);
+            mavlink_msg_heartbeat_pack(1, 1, &mavmsg, MAV_TYPE_GROUND_ROVER, MAV_AUTOPILOT_PX4, 
+                                       base_mode, custom_mode, MAV_STATE_ACTIVE);
             len = mavlink_msg_to_send_buffer(buf, &mavmsg);
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 
@@ -243,7 +258,9 @@ int main(int argc, char **argv){
 
         /* when the gcs heartbeat was stopped, then DISARM and mission_start is False */
         if (microsSinceEpoch() - last_gcs_heartbeat_time > gcs_heartbeat_interval){
-            std::cout << "GCS signal was interrupted\n" << std::endl;
+            usleep(COMMON_INTERVAL);
+            ROS_INFO("GCS signal was interrupted");
+            //std::cout << "GCS signal was interrupted\n" << std::endl;
             base_mode = ARDUPILOT_GUIDED_DISARMED;
             mission_start = false;            
         }
@@ -257,6 +274,18 @@ int main(int argc, char **argv){
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 
             pre_request_time = microsSinceEpoch();
+        }
+
+        /* response for PARAM_SET  */
+        if (parameter_set == true){
+            usleep(COMMON_INTERVAL);
+            ROS_INFO("send param_value");
+            printf("%s, %f, %i", parameter_id, parameter_value, parameter_type);
+            mavlink_msg_param_value_pack(1, 1, &mavmsg, parameter_id, parameter_value, parameter_type,
+                                         1, 0);
+            len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+            bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+            parameter_set = false;
         }
 
         /* receiver section */
@@ -280,11 +309,53 @@ int main(int argc, char **argv){
                            mavmsg.sysid, mavmsg.compid, mavmsg.len, mavmsg.msgid);
                 }
             }
-            if (mavmsg.msgid == 0){
+            switch(mavmsg.msgid){
+            case MAVLINK_MSG_ID_HEARTBEAT:{ //MAV ID 0
                 last_gcs_heartbeat_time = microsSinceEpoch();
+                break;
             }
 
-            if (mavmsg.msgid == 44){
+            /* SET_MODE decoder */
+            case MAVLINK_MSG_ID_SET_MODE:{ // MAV ID 11
+                mavlink_set_mode_t mavsm;
+
+                // decode SET_MODE message
+                mavlink_msg_set_mode_decode(&mavmsg, &mavsm);
+                printf("%i, %i, %i", mavsm.custom_mode, mavsm.target_system, mavsm.base_mode);
+                custom_mode = mavsm.custom_mode;
+                base_mode = mavsm.base_mode;
+                break;
+            }
+
+            case MAVLINK_MSG_ID_PARAM_REQUEST_LIST:{ // MAV ID 21
+                ROS_INFO("param request received");
+                usleep(LIGHT_INTERVAL);
+
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kp", 0.1, MAVLINK_TYPE_FLOAT, 2, 0);
+                len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+                bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
+                                    sizeof(struct sockaddr_in));
+                usleep(LIGHT_INTERVAL);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kd", 1.0, MAVLINK_TYPE_FLOAT, 2, 1);
+                len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+                bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
+                                    sizeof(struct sockaddr_in));
+                break;
+            }
+
+            case MAVLINK_MSG_ID_PARAM_SET:{ // MAV ID 23
+                mavlink_param_set_t mavps;
+                ROS_INFO("param_set received");                
+                
+                mavlink_msg_param_set_decode(&mavmsg, &mavps);
+                parameter_set = true;
+                parameter_id = mavps.param_id;
+                parameter_value = mavps.param_value;
+                parameter_type = mavps.param_type;
+                break;
+            }
+
+            case MAVLINK_MSG_ID_MISSION_COUNT:{ // MAV ID 44
                 mavlink_mission_count_t mavmc;
                 printf("mission count was received\n");
                     
@@ -292,10 +363,11 @@ int main(int argc, char **argv){
                 mission_total_seq = mavmc.count;
                 mission_seq = 0;
                 printf("%i\n", mission_total_seq);
+                break;
             }
 
             /* mission receiver */
-            if (mavmsg.msgid == 73){
+            case MAVLINK_MSG_ID_MISSION_ITEM_INT:{ // MAV ID 73
                 mavlink_mission_item_int_t mavmii;
 
                 //printf("mission item was received\n");
@@ -331,24 +403,15 @@ int main(int argc, char **argv){
                 if (mission_seq == mission_total_seq){
                     mavlink_msg_mission_ack_pack(1, 200, &mavmsg, 0, 0, MAV_MISSION_TYPE_MISSION);
                     len = mavlink_msg_to_send_buffer(buf, &mavmsg);
-                    bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
-
+                    bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
+                                        sizeof(struct sockaddr_in));
                     mission_total_seq = 0;
                 }
-            }
-            /* SET_MODE decoder */
-            if (mavmsg.msgid == 11){
-                mavlink_set_mode_t mavsm;
-
-                // decode SET_MODE message
-                mavlink_msg_set_mode_decode(&mavmsg, &mavsm);
-                printf("%i, %i, %i", mavsm.custom_mode, mavsm.target_system, mavsm.base_mode);
-                custom_mode = mavsm.custom_mode;
-                base_mode = mavsm.base_mode;
+                break;
             }
 
             /* COMMAND_LONG decoder */
-            if (mavmsg.msgid == 76){
+            case MAVLINK_MSG_ID_COMMAND_LONG:{ //MAV ID 76
                 mavlink_command_long_t mavcl;
 
                 // decode SET_MODE message
@@ -357,7 +420,7 @@ int main(int argc, char **argv){
 
                 /* Send COMMAND_ACK */
                 /* ARM */
-                if (mavcl.command == MAV_CMD_COMPONENT_ARM_DISARM && mavcl.param1 == 1.0){
+                if (mavcl.command == MAV_CMD_COMPONENT_ARM_DISARM && mavcl.param1 == 1.0){ // CMD ID 400
                     mavlink_msg_command_ack_pack(1, 200, &mavmsg, MAV_CMD_COMPONENT_ARM_DISARM,
                                                  MAV_RESULT_ACCEPTED);
                     len = mavlink_msg_to_send_buffer(buf, &mavmsg);
@@ -365,7 +428,7 @@ int main(int argc, char **argv){
                     base_mode = ARDUPILOT_GUIDED_ARMED;
                 }
                 /* DISARM */
-                if (mavcl.command == MAV_CMD_COMPONENT_ARM_DISARM && mavcl.param1 == 0.0){
+                if (mavcl.command == MAV_CMD_COMPONENT_ARM_DISARM && mavcl.param1 == 0.0){ // CMD ID 400
                     mavlink_msg_command_ack_pack(1, 200, &mavmsg, MAV_CMD_COMPONENT_ARM_DISARM,
                                                  MAV_RESULT_ACCEPTED);
                     len = mavlink_msg_to_send_buffer(buf, &mavmsg);
@@ -374,21 +437,22 @@ int main(int argc, char **argv){
                     mission_start = false;
                 }
                 /* MAV_CMD_MISSION_START */
-                if (mavcl.command == MAV_CMD_MISSION_START){
+                if (mavcl.command == MAV_CMD_MISSION_START){ // CMD ID 300
                     mavlink_msg_command_ack_pack(1, 200, &mavmsg, mavcl.command,
                                                  MAV_RESULT_ACCEPTED);
                     len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                     bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
                     mission_start = true;
                 }
-                if (mavcl.command == MAV_CMD_REQUEST_PROTOCOL_VERSION){
+                if (mavcl.command == MAV_CMD_REQUEST_PROTOCOL_VERSION){ // CMD ID 519
                     mavlink_msg_command_ack_pack(1, 200, &mavmsg, mavcl.command,
                                                  MAV_RESULT_ACCEPTED);
                     len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                     bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
                 }
-            }                
-            //printf("\n");
+                break;
+            }
+            }
         }
         memset(buf, 0, BUFFER_LENGTH);
         usleep(10000); // Sleep 10 msec
