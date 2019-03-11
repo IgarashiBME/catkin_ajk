@@ -54,6 +54,7 @@
 using namespace std;
 
 uint64_t microsSinceEpoch();
+int sock;
 
 class Listener{
 public:
@@ -62,8 +63,8 @@ public:
        yayoi     lat 35.716761  lon 139.761254
        tanashi   lat 35.736805  lon 139.539676
        osakaike  lat 34.559582  lon 133.537000*/
-    int lat = 35.736805 * 10000000;  // latitude
-    int lon = 139.539676 * 10000000;  // longitude
+    int lat = 34.559582 * 10000000;  // latitude
+    int lon = 133.537000 * 10000000;  // longitude
     //int lat = 34.500682 * 10000000;
     //int lon = 133.558131 * 10000000;
     int alt = 10000;  // altitude above elliposid
@@ -108,7 +109,6 @@ int main(int argc, char **argv){
     char target_ip[100];
 	
     float position[6] = {};
-    int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     struct sockaddr_in gcAddr; 
     struct sockaddr_in locAddr;
     uint8_t buf[BUFFER_LENGTH];
@@ -146,6 +146,28 @@ int main(int argc, char **argv){
     uint16_t parameter_count;
     uint16_t parameter_index;
 
+    /* ros intializer */
+    ros::init(argc, argv, "mavlink_node");
+    ROS_INFO("fake fcu start");
+    ros::NodeHandle n;
+
+    Listener listener;
+    ros::Subscriber sub = n.subscribe("/utm_hp", 10, &Listener::gnss_callback, &listener);
+    ros::Subscriber auto_log = n.subscribe("/auto_log", 1, &Listener::auto_log_callback, &listener);
+    ros::Subscriber move_base = n.subscribe("/relposned", 1, &Listener::move_base_callback, &listener);
+
+    ros::Publisher pub_mission = n.advertise<mavlink_ajk::MAV_Mission>("/mav/mission", 1000);
+    mavlink_ajk::MAV_Mission mission_rosmsg;
+
+    ros::Publisher pub_modes = n.advertise<mavlink_ajk::MAV_Modes>("/mav/modes", 1);
+    mavlink_ajk::MAV_Modes modes_rosmsg;
+
+    while (!ros::ok());
+    if ((sock=socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1){
+        perror("error");
+        exit(EXIT_FAILURE);
+    }
+
     // Change the target ip if parameter was given
     strcpy(target_ip, "127.0.0.1");
     if (argc == 2){
@@ -165,7 +187,7 @@ int main(int argc, char **argv){
     } 
 	
     /* Attempt to make it non blocking */
-    if (fcntl(sock, F_SETFL, O_NONBLOCK | FASYNC) < 0){
+    if (fcntl(sock, F_SETFL, O_NONBLOCK | O_ASYNC) < 0){
         fprintf(stderr, "error setting nonblocking: %s\n", strerror(errno));
         close(sock);
         exit(EXIT_FAILURE);
@@ -179,22 +201,6 @@ int main(int argc, char **argv){
     /* time setting for interval */
     pre_heartbeat_time = microsSinceEpoch();
     pre_request_time = microsSinceEpoch();
-
-    /* ros intializer */
-    ros::init(argc, argv, "mavlink_node");
-    ROS_INFO("fake fcu start");
-    ros::NodeHandle n;
-
-    Listener listener;
-    ros::Subscriber sub = n.subscribe("/utm_hp", 10, &Listener::gnss_callback, &listener);
-    ros::Subscriber auto_log = n.subscribe("/auto_log", 1, &Listener::auto_log_callback, &listener);
-    ros::Subscriber move_base = n.subscribe("/relposned", 1, &Listener::move_base_callback, &listener);
-
-    ros::Publisher pub_mission = n.advertise<mavlink_ajk::MAV_Mission>("/mav/mission", 1000);
-    mavlink_ajk::MAV_Mission mission_rosmsg;
-
-    ros::Publisher pub_modes = n.advertise<mavlink_ajk::MAV_Modes>("/mav/modes", 1);
-    mavlink_ajk::MAV_Modes modes_rosmsg;
 
     while (ros::ok()){
         /* time interval */
