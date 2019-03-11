@@ -1,4 +1,6 @@
 <launch>
   <node pkg="mavlink_ajk" type="mavlink_ajk_node" name="mavlink_ajk" output="screen">
+    <param name="param_path" value="$(find mavlink_ajk)/param/ajk_param.yaml"/>
+    <rosparam file="$(find mavlink_ajk)/param/ajk_param.yaml" command="load"/>
   </node>
 </launch>

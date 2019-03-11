@@ -163,6 +163,17 @@ int main(int argc, char **argv){
     mavlink_ajk::MAV_Modes modes_rosmsg;
 
     while (!ros::ok());
+    std::string param_path;
+    ros::param::get("~param_path", param_path);
+    //std::string test;
+    //ros::param::get("/mavlink", test);
+    //std::cout << test << std::endl; 
+
+    char* rosdump_cmd;
+    sprintf(rosdump_cmd, "rosparam dump -v %s /mavlink_ajk", param_path.c_str());
+    system(rosdump_cmd);
+    ROS_INFO("parameter-path:%s", param_path.c_str());
+
     if ((sock=socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1){
         perror("error");
         exit(EXIT_FAILURE);
