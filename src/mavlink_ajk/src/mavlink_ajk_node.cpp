@@ -146,6 +146,12 @@ int main(int argc, char **argv){
     uint16_t parameter_count;
     uint16_t parameter_index;
 
+    /* rosparameters */
+    float Kp_value;
+    float Kd_value;
+    float look_ahead_value;
+    float shutdown_value;
+
     /* ros intializer */
     ros::init(argc, argv, "mavlink_node");
     ROS_INFO("fake fcu start");
@@ -165,14 +171,19 @@ int main(int argc, char **argv){
     while (!ros::ok());
     std::string param_path;
     ros::param::get("~param_path", param_path);
+    ros::param::get("/mavlink_ajk/Kp", Kp_value);
+    ros::param::get("/mavlink_ajk/Kd", Kd_value);
+    ros::param::get("/mavlink_ajk/look_ahead", look_ahead_value);
+    ros::param::get("/mavlink_ajk/shutdown", shutdown_value);
+    char rosdump_cmd[100];
+    sprintf(rosdump_cmd, "rosparam dump -v %s /mavlink_ajk", param_path.c_str());
+    system(rosdump_cmd);
+    //ROS_INFO("parameter-path:%s", param_path);
+
     //std::string test;
     //ros::param::get("/mavlink", test);
     //std::cout << test << std::endl; 
 
-    char* rosdump_cmd;
-    sprintf(rosdump_cmd, "rosparam dump -v %s /mavlink_ajk", param_path.c_str());
-    system(rosdump_cmd);
-    ROS_INFO("parameter-path:%s", param_path.c_str());
 
     if ((sock=socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1){
         perror("error");
@@ -303,6 +314,10 @@ int main(int argc, char **argv){
             len = mavlink_msg_to_send_buffer(buf, &mavmsg);
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
             parameter_set = false;
+
+            char param_cmd[100];
+            sprintf(param_cmd, "/mavlink_ajk/%s", parameter_id);
+            ros::param::set(param_cmd, parameter_value);
         }
 
         /* receiver section */
@@ -348,12 +363,22 @@ int main(int argc, char **argv){
                 ROS_INFO("param request received");
                 usleep(LIGHT_INTERVAL);
 
-                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kp", 0.1, MAVLINK_TYPE_FLOAT, 2, 0);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kp", Kp_value, MAVLINK_TYPE_FLOAT, 4, 0);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
                 usleep(LIGHT_INTERVAL);
-                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kd", 1.0, MAVLINK_TYPE_FLOAT, 2, 1);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kd", Kd_value, MAVLINK_TYPE_FLOAT, 4, 1);
+                len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+                bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
+                                    sizeof(struct sockaddr_in));
+                usleep(LIGHT_INTERVAL);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "look_ahead", look_ahead_value, MAVLINK_TYPE_FLOAT, 4, 2);
+                len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+                bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
+                                    sizeof(struct sockaddr_in));
+                usleep(LIGHT_INTERVAL);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "shutdown", shutdown_value, MAVLINK_TYPE_FLOAT, 4, 3);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
