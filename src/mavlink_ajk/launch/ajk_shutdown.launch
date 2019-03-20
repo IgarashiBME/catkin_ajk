@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="mavlink_ajk" type="ajk_shutdown.py" name="ajk_shutdown" output="screen">
+  </node>
+</launch>
