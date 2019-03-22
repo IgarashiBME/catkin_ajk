@@ -8,7 +8,7 @@ User=rosusb
 ExecStart=/usr/bin/screen -S ip-checker -ADm bash -l -c 'python ~/catkin_ajk/service/ip_checker.py'
 Type=simple
 Restart=always
-RestartSec=1s
+RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target
