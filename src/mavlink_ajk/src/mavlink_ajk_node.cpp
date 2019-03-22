@@ -51,6 +51,8 @@
 #define COMMON_INTERVAL 1000000
 #define LIGHT_INTERVAL 100000
 
+#define NOT_SAVED_PARAM "shutdown"
+
 using namespace std;
 
 uint64_t microsSinceEpoch();
@@ -308,7 +310,7 @@ int main(int argc, char **argv){
         if (parameter_set == true){
             usleep(COMMON_INTERVAL);
             ROS_INFO("send param_value");
-            printf("%s, %f, %i", parameter_id, parameter_value, parameter_type);
+            printf("%s, %f, %i\n", parameter_id, parameter_value, parameter_type);
             mavlink_msg_param_value_pack(1, 1, &mavmsg, parameter_id, parameter_value, parameter_type,
                                          1, 0);
             len = mavlink_msg_to_send_buffer(buf, &mavmsg);
@@ -318,6 +320,12 @@ int main(int argc, char **argv){
             char param_cmd[100];
             sprintf(param_cmd, "/mavlink_ajk/%s", parameter_id);
             ros::param::set(param_cmd, parameter_value);
+
+            if (strcmp(parameter_id, NOT_SAVED_PARAM)){
+                ros::param::set("/mavlink_ajk/shutdown", 0); // shutdown parameter must not save
+                sprintf(rosdump_cmd, "rosparam dump -v %s /mavlink_ajk", param_path.c_str());
+                system(rosdump_cmd);
+            }
         }
 
         /* receiver section */
