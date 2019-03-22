@@ -230,6 +230,7 @@ if __name__ == '__main__':
     quat_fact = 16384    # 1 = 2^14 LSB
     seq = 0
 
+    read_error_count = 0
     while not rospy.is_shutdown():
         buf = read_from_dev(ser, ACCEL_DATA, 45)
         if buf != 0:
@@ -289,7 +290,12 @@ if __name__ == '__main__':
             #roll = float(st.unpack('h', st.pack('BB', buf[20], buf[21]))[0]) / 16.0
             #pitch = float(st.unpack('h', st.pack('BB', buf[22], buf[23]))[0]) / 16.0
             #           print "RPY=(%.2f %.2f %.2f)" %(roll, pitch, yaw)
-
             seq = seq + 1
+            read_error_count = 0
+        else:
+            read_error_count = read_error_count +1
+            if read_error_count > 100:
+                exit()
+
         rate.sleep()
     ser.close()
