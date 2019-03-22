@@ -14,7 +14,7 @@ class ajk_shutdown():
             shutdown_value = rospy.get_param("/mavlink_ajk/shutdown", 0.0)
 
             if shutdown_value != 0.0:
-                os.system('echo "19870106" | sudo -S shutdown -r now')
+                os.system('echo "19870106" | sudo -S shutdown -h now')
             time.sleep(5)
 
     def shutdown(self):
