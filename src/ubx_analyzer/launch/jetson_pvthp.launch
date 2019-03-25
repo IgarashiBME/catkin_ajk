@@ -1,0 +1,8 @@
+<launch>
+  <arg name="rtk_config_file" default="$(find ubx_analyzer)/config/jetson_rtk_rover.yaml"/> 
+  <node pkg="ubx_analyzer" type="pvthp.py" name="pvthp" output="screen">
+    <rosparam file="$(arg rtk_config_file)" command="load"/>
+  </node>
+</launch>
+
+

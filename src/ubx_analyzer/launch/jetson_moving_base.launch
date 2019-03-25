@@ -1,0 +1,8 @@
+<launch>
+  <arg name="mb_config_file" default="$(find ubx_analyzer)/config/jetson_moving_base_rover.yaml"/> 
+  <node pkg="ubx_analyzer" type="moving_base.py" name="moving_base" output="screen">
+    <rosparam file="$(arg mb_config_file)" command="load"/>
+  </node>
+</launch>
+
+
