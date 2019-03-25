@@ -1,0 +1,15 @@
+[Unit]
+Description=ROSCORE launcher
+After=ip_checker.service
+Requires=ip_checker.service
+
+[Service]
+User=ubuntu
+ExecStartPre=/bin/bash -l -c 'source ~/.bash_profile'
+ExecStart=/usr/bin/screen -S roscore -ADm bash -l -c 'roscore'
+Type=simple
+Restart=always
+RestartSec=1s
+
+[Install]
+WantedBy=multi-user.target

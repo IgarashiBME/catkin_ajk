@@ -1,15 +1,15 @@
 [Unit]
-Description=ajk_shutdown launcher
+Description=moving_base launcher
 After=roscore.service
 Requires=roscore.service
 
 [Service]
-User=rosusb
+User=ubuntu
 ExecStartPre=/bin/bash -l -c 'rostopic list'
-ExecStart=/usr/bin/screen -S ajk_shutdown -ADm bash -l -c 'roslaunch mavlink_ajk ajk_shutdown.launch'
+ExecStart=/usr/bin/screen -S moving_base -ADm bash -l -c 'roslaunch ubx_analyzer jetson_moving_base.launch'
 Type=simple
 Restart=always
-RestartSec=1s
+RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target

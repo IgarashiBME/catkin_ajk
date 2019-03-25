@@ -1,0 +1,15 @@
+[Unit]
+Description=rtk launcher
+After=roscore.service
+Requires=roscore.service
+
+[Service]
+User=rosusb
+ExecStartPre=/bin/bash -l -c 'rostopic list'
+ExecStart=/usr/bin/screen -S rtk -ADm bash -l -c 'roslaunch ubx_analyzer jetson_pvthp.launch'
+Type=simple
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

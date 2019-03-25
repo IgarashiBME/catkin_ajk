@@ -1,0 +1,15 @@
+[Unit]
+Description=mavlink_ajk launcher
+After=roscore.service
+Requires=roscore.service
+
+[Service]
+User=ubuntu
+ExecStartPre=/bin/bash -l -c 'rostopic list'
+ExecStart=/usr/bin/screen -S mavlink_ajk -ADm bash -l -c 'roslaunch mavlink_ajk mavlink_ajk.launch'
+Type=simple
+Restart=always
+RestartSec=1s
+
+[Install]
+WantedBy=multi-user.target
