@@ -1,2 +1,2 @@
-{Kd: 0.6000000238418579, Kp: 2.0, look_ahead: 1.399999976158142, param_path: /home/rosusb/catkin_ajk/src/mavlink_ajk/param/ajk_param.yaml,
-  shutdown: 0}
+{Kd: 0.004999999888241291, Kp: 0.05000000074505806, look_ahead: 1.2999999523162842,
+  param_path: /home/rosusb/catkin_ajk/src/mavlink_ajk/param/ajk_param.yaml, shutdown: 0}

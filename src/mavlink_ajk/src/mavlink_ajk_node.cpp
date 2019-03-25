@@ -381,6 +381,7 @@ int main(int argc, char **argv){
 
             case MAVLINK_MSG_ID_PARAM_REQUEST_LIST:{ // MAV ID 21
                 ROS_INFO("param request received");
+                qgc_param.parameter_getter();
                 usleep(LIGHT_INTERVAL);
 
                 mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kp", qgc_param.Kp_value, MAVLINK_TYPE_FLOAT, 4, 0);
