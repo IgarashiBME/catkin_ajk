@@ -121,6 +121,13 @@ class controller():
         else:
             engine_status = ENGINE_OFF
 
+        # overwrite by QGC engine parameter
+        qgc_ajk_engine = rospy.get_param("/mavlink_ajk/ajk_engine", 0.0)
+        if qgc_ajk_engine == 0.0:
+            engine_status = ENGINE_OFF
+        else:
+            engine_status = ENGINE_ON
+
         now = rospy.Time.now().secs + rospy.Time.now().nsecs/1000000000.0
         if now - self.manual_stamp < MANUAL_SIGNAL_INTERVAL:
             self.serial_write(str(self.translation_value), str(self.steering_value), engine_status)
