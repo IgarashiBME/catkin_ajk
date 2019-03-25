@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="mavlink_ajk" type="qgc_param_command.py" name="qgc_param_command" output="screen">
+  </node>
+</launch>
