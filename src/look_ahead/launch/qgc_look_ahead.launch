@@ -1,0 +1,6 @@
+<launch>
+  <node pkg="look_ahead" type="qgc_look_ahead.py" name="qgc_look_ahead" output="screen" respawn="true">
+  </node>
+  <node pkg="look_ahead" type="auto_rosbag.py" name="auto_rosbag" output="screen" respawn="true">
+  </node>
+</launch>
