@@ -1,12 +1,12 @@
 [Unit]
-Description=sanyokiki launcher
+Description=look_ahead launcher
 After=roscore.service
 Requires=roscore.service
 
 [Service]
 User=ubuntu
 ExecStartPre=/bin/bash -l -c 'rostopic list'
-ExecStart=/usr/bin/screen -S sanyokiki -ADm bash -l -c 'roslaunch sanyokiki ajk.launch'
+ExecStart=/usr/bin/screen -S look_ahead -ADm bash -l -c 'roslaunch look_ahead qgc_look_ahead.launch'
 Type=simple
 Restart=always
 RestartSec=5s
