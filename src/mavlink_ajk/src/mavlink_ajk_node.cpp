@@ -65,8 +65,8 @@ public:
        yayoi     lat 35.716761  lon 139.761254
        tanashi   lat 35.736805  lon 139.539676
        osakaike  lat 34.559582  lon 133.537000*/
-    int lat = 34.559582 * 10000000;  // latitude
-    int lon = 133.537000 * 10000000;  // longitude
+    int lat = 35.736805 * 10000000;  // latitude
+    int lon = 139.539676 * 10000000;  // longitude
     //int lat = 34.500682 * 10000000;
     //int lon = 133.558131 * 10000000;
     int alt = 10000;  // altitude above elliposid
