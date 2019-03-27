@@ -1,6 +1,6 @@
 <launch>
-  <node pkg="sanyokiki" type="controller.py" name="sanyo_controller" output="screen">
+  <node pkg="sanyokiki" type="controller.py" name="sanyo_controller" output="screen" respawn="true">
   </node>
-  <node pkg="sanyokiki" type="key_command.py" name="key_command" output="screen">
+  <node pkg="sanyokiki" type="key_command.py" name="key_command" output="screen" respawn="true">
   </node>
 </launch>
