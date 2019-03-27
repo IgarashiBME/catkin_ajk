@@ -90,9 +90,8 @@ class controller():
             try:
                 self.ser.write(self.ControlCommand[0+i:1+i])
                 self.ser.flush()
-            except AttributeError as e:
-                #print e
-                pass
+            except serial.SerialException as e:
+                rospy.signal_shutdown('QUIT')
             #print self.ControlCommand[0+i:1+i]
             time.sleep(0.0008) # need 0.8 msec sleep
 
