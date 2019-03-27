@@ -32,7 +32,7 @@ class gnss_odom():
         self.navpvt = NavPVT()
         self.pub_navpvt = rospy.Publisher('/navpvt', NavPVT, queue_size = 1)
         self.relposned = RELPOSNED()
-        self.pub_utmhp = rospy.Publisher('/utmhp', UTMHP, queue_size = 1)
+        self.pub_utmhp = rospy.Publisher('/utm_hp', UTMHP, queue_size = 1)
         self.utmhp = UTMHP()
         self.pub_relposned = rospy.Publisher('/relposned', RELPOSNED, queue_size = 1)
         rospy.Subscriber('/gazebo/model_states', ModelStates, self.callback, queue_size=1) # ROS callback function
