@@ -1,5 +1,5 @@
 # USB port
-port: /dev/serial/by-path/platform-tegra-xhci-usb-0:3.2:1.0-port0
+port: /dev/serial/by-path/platform-tegra-xhci-usb-0:3.3:1.0-port0
 # Tf frame id
 frame_id: imu_bosch_link
 # Data reading frequency
