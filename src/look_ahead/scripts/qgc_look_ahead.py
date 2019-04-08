@@ -167,7 +167,7 @@ class look_ahead():
 
     def loop(self):
         rr = rospy.Rate(frequency)
-        seq = 2
+        seq = 1
         KP = 0
         KD = 0
         look_ahead_dist = 0
