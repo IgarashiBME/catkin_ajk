@@ -6,7 +6,7 @@ Requires=roscore.service
 [Service]
 User=ubuntu
 ExecStartPre=/bin/bash -l -c 'rostopic list'
-ExecStart=/usr/bin/screen -S imu_bosch -ADm bash -l -c 'roslaunch bosch_imu_driver imu_toshiba.launch'
+ExecStart=/usr/bin/screen -S imu_bosch -ADm bash -l -c 'roslaunch bosch_imu_driver imu_jetson.launch'
 Type=simple
 Restart=always
 RestartSec=5s
