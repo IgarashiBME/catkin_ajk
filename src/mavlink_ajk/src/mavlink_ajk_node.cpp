@@ -167,6 +167,14 @@ int main(int argc, char **argv){
     uint16_t parameter_count;
     uint16_t parameter_index;
 
+    /* manual_control */
+    uint8_t manual_target;
+    int16_t manual_x;
+    int16_t manual_y;
+    int16_t manual_z;
+    int16_t manual_r;
+    uint16_t manual_buttons;
+
     /* ros intializer */
     ros::init(argc, argv, "mavlink_node");
     ROS_INFO("fake fcu start");
@@ -428,6 +436,22 @@ int main(int argc, char **argv){
                 mission_total_seq = mavmc.count;
                 mission_seq = 0;
                 printf("%i\n", mission_total_seq);
+                break;
+            }
+
+            /* manual control (joystick) */
+            case MAVLINK_MSG_ID_MANUAL_CONTROL:{ // MAV ID 69
+                mavlink_manual_control_t mavmc;
+                    
+                mavlink_msg_manual_control_decode(&mavmsg, &mavmc);
+                manual_target = mavmc.target;
+                manual_x = mavmc.x;
+                manual_y = mavmc.y;
+                manual_z = mavmc.z;
+                manual_r = mavmc.r;
+                manual_buttons = mavmc.buttons;
+                printf("target:%i, x:%i, y:%i, z:%i, r:%i, buttons:%i\n", 
+                       manual_target, manual_x, manual_y, manual_z, manual_r, manual_buttons);
                 break;
             }
 
