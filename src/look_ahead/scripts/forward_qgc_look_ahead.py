@@ -27,6 +27,8 @@ SPACING = 0.6       # distance between lines
 x_tolerance = 0.1  # [meter]
 yaw_tolerance = 40.0 # [Degree]
 yaw_tolerance_onstart = 5.0 # [Degree]
+
+I_CONTROL_DIST = 0.1 # [meter], refer to cross_track_error 
 MAX_PIVOT_COUNT = 1
 
 # translation value
@@ -146,7 +148,7 @@ class look_ahead():
         self.base_mode = msg.base_mode
         self.custom_mode = msg.custom_mode
 
-    def cmdvel_publisher(self, steering_ang, translation, pd):
+    def cmdvel_publisher(self, steering_ang, translation, pi):
         if abs(steering_ang) > yaw_tolerance and self.bool_start_point == False:
             if steering_ang >= 0:
                 self.cmdvel.linear.x = 0
@@ -163,7 +165,7 @@ class look_ahead():
                 self.cmdvel.angular.z = CMD_ANGULAR_RIGHT
         else:
             self.cmdvel.linear.x = CMD_LINEAR_OPT*translation
-            self.cmdvel.angular.z = pd *CMD_ANGULAR_K
+            self.cmdvel.angular.z = pi *CMD_ANGULAR_K
 
         # Angular limit
         if self.cmdvel.angular.z > CMD_ANGULAR_LIMIT:
@@ -179,7 +181,7 @@ class look_ahead():
         rr = rospy.Rate(frequency)
         seq = 1
         KP = 0
-        KD = 0
+        KI = 0
         look_ahead_dist = 0
         pivot_count = 0
         while not rospy.is_shutdown():
@@ -207,7 +209,7 @@ class look_ahead():
 
             # get the parameters of look-ahead control
             KP = rospy.get_param("/mavlink_ajk/Kp")
-            KD = rospy.get_param("/mavlink_ajk/Kd")
+            KI = rospy.get_param("/mavlink_ajk/Ki")
             look_ahead_dist = rospy.get_param("/mavlink_ajk/look_ahead")
 
             # waypoint with xy coordinate origin adjust
@@ -255,13 +257,17 @@ class look_ahead():
 
             # calculate the steering_value
             p = KP *steering_ang
-            d = KD *self.pre_steering_ang
-            pd_value = p - d
-            self.pre_steering_ang = steering_ang
+            i = KI *own_y_tf
 
-            ajk_steering = STEERING_NEUTRAL +LR_OPTIMUM *pd_value
+            pi_value = p
+            if abs(own_y_tf) < I_CONTROL_DIST:
+                pi_value = p - i
+                
+            #self.pre_steering_ang = steering_ang
+
+            ajk_steering = STEERING_NEUTRAL +LR_OPTIMUM *pi_value
             if translation < 0:
-                ajk_steering = STEERING_NEUTRAL -LR_OPTIMUM *pd_value 
+                ajk_steering = STEERING_NEUTRAL -LR_OPTIMUM *pi_value 
             ajk_translation = TRANSLATION_NEUTRAL +FB_OPTIMUM *translation
 
             # Restriction of ajk_steering
@@ -304,7 +310,7 @@ class look_ahead():
             self.ajk_pub.publish(self.ajk_value)
 
             # for simulator
-            self.cmdvel_publisher(steering_ang, translation, pd_value)
+            self.cmdvel_publisher(steering_ang, translation, pi_value)
 
             # publish autonomous log
             self.auto_log.stamp = rospy.Time.now()
@@ -322,11 +328,11 @@ class look_ahead():
             self.auto_log.cross_track_error = -own_y_tf
 
             self.auto_log.Kp = KP
-            self.auto_log.Kd = KD
+            self.auto_log.Ki = KI
             self.auto_log.look_ahead_dist = look_ahead_dist
 
             self.auto_log.p = p
-            self.auto_log.d = d
+            self.auto_log.i = i
             self.auto_log.steering_ang = steering_ang
             self.auto_log.translation = self.ajk_value.translation
             self.auto_log.steering = self.ajk_value.steering
