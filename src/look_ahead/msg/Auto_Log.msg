@@ -14,10 +14,12 @@ float64 tf_own_y
 float64 cross_track_error
 
 float64 Kp
+float64 Ki
 float64 Kd
 float64 look_ahead_dist
 
 float64 p
+float64 i
 float64 d
 float64 steering_ang #[degree]
 float64 translation
