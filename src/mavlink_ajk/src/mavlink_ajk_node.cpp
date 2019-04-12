@@ -85,6 +85,7 @@ public:
     void parameter_getter();
     /* rosparameters */
     float Kp_value;
+    float Ki_value;
     float Kd_value;
     float look_ahead_value;
     float shutdown_value;
@@ -120,6 +121,7 @@ void Listener::move_base_callback(const ubx_analyzer::RELPOSNED::ConstPtr& msg){
 
 void QGC_parameter::parameter_getter(){
     ros::param::get("/mavlink_ajk/Kp", Kp_value);
+    ros::param::get("/mavlink_ajk/Ki", Ki_value);
     ros::param::get("/mavlink_ajk/Kd", Kd_value);
     ros::param::get("/mavlink_ajk/look_ahead", look_ahead_value);
     ros::param::get("/mavlink_ajk/shutdown", shutdown_value);
@@ -389,27 +391,32 @@ int main(int argc, char **argv){
                 qgc_param.parameter_getter();
                 usleep(LIGHT_INTERVAL);
 
-                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kp", qgc_param.Kp_value, MAVLINK_TYPE_FLOAT, 5, 0);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kp", qgc_param.Kp_value, MAVLINK_TYPE_FLOAT, 6, 0);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
                 usleep(LIGHT_INTERVAL);
-                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kd", qgc_param.Kd_value, MAVLINK_TYPE_FLOAT, 5, 1);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Ki", qgc_param.Ki_value, MAVLINK_TYPE_FLOAT, 6, 1);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
                 usleep(LIGHT_INTERVAL);
-                mavlink_msg_param_value_pack(1, 1, &mavmsg, "look_ahead", qgc_param.look_ahead_value, MAVLINK_TYPE_FLOAT, 5, 2);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kd", qgc_param.Kd_value, MAVLINK_TYPE_FLOAT, 6, 2);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
                 usleep(LIGHT_INTERVAL);
-                mavlink_msg_param_value_pack(1, 1, &mavmsg, "shutdown", qgc_param.shutdown_value, MAVLINK_TYPE_FLOAT, 5, 3);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "look_ahead", qgc_param.look_ahead_value, MAVLINK_TYPE_FLOAT, 6, 3);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
                 usleep(LIGHT_INTERVAL);
-                mavlink_msg_param_value_pack(1, 1, &mavmsg, "ajk_engine", qgc_param.ajk_engine_value, MAVLINK_TYPE_FLOAT, 5, 4);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "shutdown", qgc_param.shutdown_value, MAVLINK_TYPE_FLOAT, 6, 4);
+                len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+                bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
+                                    sizeof(struct sockaddr_in));
+                usleep(LIGHT_INTERVAL);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "ajk_engine", qgc_param.ajk_engine_value, MAVLINK_TYPE_FLOAT, 6, 5);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
