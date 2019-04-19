@@ -465,6 +465,7 @@ int main(int argc, char **argv){
                        manual_target, manual_x, manual_y, manual_z, manual_r, manual_buttons);
 
                 /* publish ARM-DISARM ROS message */
+                joystick_rosmsg.stamp = ros::Time::now();
                 joystick_rosmsg.roll = manual_y;
                 joystick_rosmsg.pitch = manual_x;
                 joystick_rosmsg.yaw = manual_r;
