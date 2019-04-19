@@ -146,7 +146,7 @@ class look_ahead():
         self.custom_mode = msg.custom_mode
 
     def cmdvel_publisher(self, steering_ang, translation, pid):
-        if abs(steering_ang) > yaw_tolerance
+        if abs(steering_ang) > yaw_tolerance:
             if steering_ang >= 0:
                 self.cmdvel.linear.x = 0
                 self.cmdvel.angular.z = CMD_ANGULAR_LEFT
@@ -155,7 +155,7 @@ class look_ahead():
                 self.cmdvel.angular.z = CMD_ANGULAR_RIGHT
         else:
             self.cmdvel.linear.x = CMD_LINEAR_OPT*translation
-            self.cmdvel.angular.z = pi *CMD_ANGULAR_K
+            self.cmdvel.angular.z = pid *CMD_ANGULAR_K
 
         # Angular limit
         if self.cmdvel.angular.z > CMD_ANGULAR_LIMIT:
