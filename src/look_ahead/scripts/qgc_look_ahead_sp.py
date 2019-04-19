@@ -27,7 +27,10 @@ SPACING = 0.8       # distance between lines
 x_tolerance = 0.1  # [meter]
 yaw_tolerance = 40.0 # [Degree]
 
+# control at the start point of the route
+YAW_TOLERANCE_ONSTART = 5.0  # [Degree]
 I_CONTROL_DIST = 0.1  # [meter], refer to cross_track_error 
+MAX_PIVOT_COUNT = 1
 
 # translation value
 FORWARD_CONST = 1
@@ -69,6 +72,7 @@ class look_ahead():
         self.q = np.empty(4)
         self.yaw = np.pi/2
         self.pre_steering_ang = 0
+        self.bool_start_point = False
 
         # mav_modes
         self.mission_start = False
@@ -146,10 +150,17 @@ class look_ahead():
         self.custom_mode = msg.custom_mode
 
     def cmdvel_publisher(self, steering_ang, translation, pid):
-        if abs(steering_ang) > yaw_tolerance
+        if abs(steering_ang) > yaw_tolerance and self.bool_start_point == False:
             if steering_ang >= 0:
                 self.cmdvel.linear.x = 0
                 self.cmdvel.angular.z = CMD_ANGULAR_LEFT
+            else:
+                self.cmdvel.linear.x = 0
+                self.cmdvel.angular.z = CMD_ANGULAR_RIGHT
+        elif abs(steering_ang) > yaw_tolerance_onstart and self.bool_start_point == True:
+            if steering_ang >= 0:
+                self.cmdvel.linear.x = 0
+                self.cmdvel.angular.z = CMD_ANGULAR_LEFT                   
             else:
                 self.cmdvel.linear.x = 0
                 self.cmdvel.angular.z = CMD_ANGULAR_RIGHT
@@ -277,7 +288,26 @@ class look_ahead():
                 ajk_steering = TRANSLATION_NEUTRAL - LR_OPTIMUM
 
             # If the yaw error is large, pivot turn.
-            if abs(steering_ang) > yaw_tolerance:
+            #if abs(steering_ang) > yaw_tolerance:
+            #    if steering_ang >= 0:
+            #        self.ajk_value.stamp = rospy.Time.now()
+            #        self.ajk_value.translation = TRANSLATION_NEUTRAL
+            #        self.ajk_value.steering = LEFT_PIVOT
+            #    else:
+            #        self.ajk_value.stamp = rospy.Time.now()
+            #        self.ajk_value.translation = TRANSLATION_NEUTRAL
+            #        self.ajk_value.steering = RIGHT_PIVOT                    
+            #else:
+            #    self.ajk_value.stamp = rospy.Time.now()
+            #    self.ajk_value.translation = ajk_translation
+            #    self.ajk_value.steering = ajk_steering
+            #self.ajk_pub.publish(self.ajk_value)
+
+            # If the yaw error is large, start pivot turn.
+            # When the path has just changed(self.bool_start_point is True), start to larger pivot turn.
+            #
+            # An upper limit is provided to avoid situation where only a pivot turn is made.
+            if abs(steering_ang) > yaw_tolerance and self.bool_start_point == False:
                 if steering_ang >= 0:
                     self.ajk_value.stamp = rospy.Time.now()
                     self.ajk_value.translation = TRANSLATION_NEUTRAL
@@ -285,7 +315,21 @@ class look_ahead():
                 else:
                     self.ajk_value.stamp = rospy.Time.now()
                     self.ajk_value.translation = TRANSLATION_NEUTRAL
-                    self.ajk_value.steering = RIGHT_PIVOT                    
+                    self.ajk_value.steering = RIGHT_PIVOT
+            elif abs(steering_ang) > YAW_TOLERANCE_ONSTART and self.bool_start_point == True:
+                if steering_ang >= 0:
+                    self.ajk_value.stamp = rospy.Time.now()
+                    self.ajk_value.translation = TRANSLATION_NEUTRAL
+                    self.ajk_value.steering = LEFT_PIVOT                    
+                else:
+                    self.ajk_value.stamp = rospy.Time.now()
+                    self.ajk_value.translation = TRANSLATION_NEUTRAL
+                    self.ajk_value.steering = RIGHT_PIVOT
+                if pivot_count > MAX_PIVOT_COUNT:
+                    pivot_count = 0
+                    self.bool_start_point == False
+                else:
+                    pivot_count = pivot_count + 1                   
             else:
                 self.ajk_value.stamp = rospy.Time.now()
                 self.ajk_value.translation = ajk_translation
@@ -326,6 +370,8 @@ class look_ahead():
                 pre_wp_x = self.waypoint_x[seq]
                 pre_wp_y = self.waypoint_y[seq]
                 seq = seq + 1
+                self.bool_start_point = True # Since mission changed to the next path, the start_point flag 
+                                             # was changed to True.
                 try:
                     a = np.array([pre_wp_x, pre_wp_y])
                     b = np.array([self.waypoint_x[seq], self.waypoint_y[seq]])
