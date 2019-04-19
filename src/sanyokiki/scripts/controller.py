@@ -11,6 +11,7 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Int8
 from nav_msgs.msg import Odometry
 from sanyokiki.msg import AJK_value
+from mavlink_ajk.msg import MAV_Joystick
 #from sanyokiki.msg import HumanProximity
 
 # Protocol of Sanyokiki weeder
@@ -28,12 +29,23 @@ LINE_FEED = chr(0x0d)
 CARRIAGE_RETURN = chr(0x0a)
 COMMAND_LENGTH = 36            # command of sanyokiki weeder is 36 length
 
+# AJK control value MIN MAX
+AJK_MIN = 170.0
+AJK_MAX = 852.0
+
+# MAVLink joystick MIN MAX
+TH_MAX = 1000.0
+TH_MIN = 0.0
+YAW_MAX = 1000.0
+YAW_MIN = -1000.0
+
 # sleep constant
 WRITE_SLEEP = 0.060 # 0.060 seconds
 
 # interval
 PRINT_INTERVAL = 1 # 1 seconds
 MANUAL_SIGNAL_INTERVAL = 0.3 # The time since the manual and auto signal stopped, 0.3 seconds
+JOY_SIGNAL_INTERVAL = 0.5 # The time since the manual and auto signal stopped, 0.3 seconds
 AUTO_SIGNAL_INTERVAL = 1 # The time since the manual and auto signal stopped, 0.3 seconds
 
 class controller():
@@ -46,6 +58,9 @@ class controller():
         self.auto_translation = TRANSLATION_NEUTRAL
         self.auto_steering = STEERING_NEUTRAL
         self.auto_stamp = 0
+        self.joy_translation = TRANSLATION_NEUTRAL
+        self.joy_steering = STEERING_NEUTRAL
+        self.joy_stamp = 0
 
         # initialize serial port
         try:
@@ -63,7 +78,8 @@ class controller():
         print "ready to controller"
         rospy.Subscriber('/engine_onoff', Int8, self.engine_subs, queue_size=1)  # ROS callback function of engine command
         rospy.Subscriber('/ajk_manual', AJK_value, self.ajk_manual_subs, queue_size=1)
-        rospy.Subscriber('/ajk_auto', AJK_value, self.ajk_auto_subs, queue_size=1) 
+        rospy.Subscriber('/ajk_auto', AJK_value, self.ajk_auto_subs, queue_size=1)
+        rospy.Subscriber('/mav/joystick', MAV_Joystick, self.ajk_joystick_subs, queue_size=1)
         #rospy.Subscriber('human_proximity', HumanProximity, self.proximity)    # ROS callback function
 
     # human procimity checker
@@ -72,13 +88,13 @@ class controller():
         self.human_proximity_value = data.proximity_value"""
 
     def serial_write(self, translation, steering, engine_status):
-        """try:
+        try:
             if self.auto_translation != 0 and self.auto_steering != 0:
                 self.ControlCommand = START_BYTE +translation +steering +ENGINE_SPEED +engine_status \
                                       +AUTONOMOUS_OFF +MAXSPEED_LIMIT +CORRECTION_A +CORRECTION_B \
                                       +LINE_FEED +CARRIAGE_RETURN                
         except AttributeError:
-            pass"""
+            pass
         self.ControlCommand = START_BYTE +translation +steering +ENGINE_SPEED +engine_status \
                               +AUTONOMOUS_OFF +MAXSPEED_LIMIT +CORRECTION_A +CORRECTION_B \
                               +LINE_FEED +CARRIAGE_RETURN
@@ -87,11 +103,11 @@ class controller():
 
         # send one character at a time
         for i in range(COMMAND_LENGTH):
-            try:
+            """try:
                 self.ser.write(self.ControlCommand[0+i:1+i])
                 self.ser.flush()
             except serial.SerialException as e:
-                rospy.signal_shutdown('QUIT')
+                rospy.signal_shutdown('QUIT')"""
             #print self.ControlCommand[0+i:1+i]
             time.sleep(0.0008) # need 0.8 msec sleep
 
@@ -130,6 +146,8 @@ class controller():
         now = rospy.Time.now().secs + rospy.Time.now().nsecs/1000000000.0
         if now - self.manual_stamp < MANUAL_SIGNAL_INTERVAL:
             self.serial_write(str(self.translation_value), str(self.steering_value), engine_status)
+        elif now - self.joy_stamp < JOY_SIGNAL_INTERVAL:
+            self.serial_write(str(self.joy_translation), str(self.joy_steering), engine_status)
         elif now - self.auto_stamp < AUTO_SIGNAL_INTERVAL:
             self.serial_write(str(self.auto_translation), str(self.auto_steering), engine_status)
         else:
@@ -162,6 +180,18 @@ class controller():
             self.auto_translation = self.auto_translation.upper()
         if self.auto_steering.islower() == True:
             self.auto_steering = self.auto_steering.upper()         
+
+    def ajk_joystick_subs(self, msg):
+        translation = (msg.throttle -TH_MIN)/(TH_MAX -TH_MIN)*(AJK_MAX -AJK_MIN) + AJK_MIN
+        steering = (-msg.yaw -YAW_MIN)/(YAW_MAX -YAW_MIN)*(AJK_MAX -AJK_MIN) + AJK_MIN
+        self.joy_stamp = msg.stamp.secs +msg.stamp.nsecs/1000000000.0
+
+        self.joy_translation = '{:04x}'.format(int(translation))
+        self.joy_steering = '{:04x}'.format(int(steering))
+        if self.joy_translation.islower() == True:
+            self.joy_translation = self.joy_translation.upper()
+        if self.joy_steering.islower() == True:
+            self.joy_steering = self.joy_steering.upper()       
 
     # loginfo loop of control command
     def loop(self):

@@ -54,6 +54,11 @@
 
 #define NOT_SAVED_PARAM "shutdown"
 
+/* Joystick */
+#define JOY_YAW_NEUTRAL 0
+#define JOY_TH_NEUTRAL 500
+#define JOY_THRESHOLD 10
+
 using namespace std;
 
 uint64_t microsSinceEpoch();
@@ -461,17 +466,19 @@ int main(int argc, char **argv){
                 manual_z = mavmc.z;
                 manual_r = mavmc.r;
                 manual_buttons = mavmc.buttons;
-                printf("target:%i, pitch:%i, roll:%i, Throttle:%i, Yaw:%i, buttons:%i\n", 
-                       manual_target, manual_x, manual_y, manual_z, manual_r, manual_buttons);
+                //printf("target:%i, pitch:%i, roll:%i, Throttle:%i, Yaw:%i, buttons:%i\n", 
+                //       manual_target, manual_x, manual_y, manual_z, manual_r, manual_buttons);
 
                 /* publish ARM-DISARM ROS message */
-                joystick_rosmsg.stamp = ros::Time::now();
-                joystick_rosmsg.roll = manual_y;
-                joystick_rosmsg.pitch = manual_x;
-                joystick_rosmsg.yaw = manual_r;
-                joystick_rosmsg.throttle = manual_z;
-                pub_joystick.publish(joystick_rosmsg);
-
+                if (JOY_THRESHOLD < std::abs(manual_z) - JOY_TH_NEUTRAL || 
+                    JOY_THRESHOLD < std::abs(manual_r) - JOY_YAW_NEUTRAL){
+                    joystick_rosmsg.stamp = ros::Time::now();
+                    joystick_rosmsg.roll = manual_y;
+                    joystick_rosmsg.pitch = manual_x;
+                    joystick_rosmsg.yaw = manual_r;
+                    joystick_rosmsg.throttle = manual_z;
+                    pub_joystick.publish(joystick_rosmsg);
+                }
                 break;
             }
 
@@ -564,7 +571,7 @@ int main(int argc, char **argv){
             }
         }
         memset(buf, 0, BUFFER_LENGTH);
-        usleep(10000); // Sleep 10 msec
+        usleep(1000); // Sleep 10 msec
         ros::spinOnce();
     }
 }
