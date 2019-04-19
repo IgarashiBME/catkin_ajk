@@ -23,9 +23,14 @@ from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
 from tf.transformations import quaternion_multiply
 
-SPACING = 0.6       # distance between lines 
+SPACING = 0.8       # distance between lines 
 x_tolerance = 0.1  # [meter]
 yaw_tolerance = 40.0 # [Degree]
+
+# control at the start point of the route
+YAW_TOLERANCE_ONSTART = 5.0  # [Degree]
+I_CONTROL_DIST = 0.1  # [meter], refer to cross_track_error 
+MAX_PIVOT_COUNT = 1
 
 # translation value
 FORWARD_CONST = 1
@@ -143,7 +148,7 @@ class look_ahead():
         self.base_mode = msg.base_mode
         self.custom_mode = msg.custom_mode
 
-    def cmdvel_publisher(self, steering_ang, translation, pd):
+    def cmdvel_publisher(self, steering_ang, translation, pid):
         if abs(steering_ang) > yaw_tolerance:
             if steering_ang >= 0:
                 self.cmdvel.linear.x = 0
@@ -153,7 +158,7 @@ class look_ahead():
                 self.cmdvel.angular.z = CMD_ANGULAR_RIGHT
         else:
             self.cmdvel.linear.x = CMD_LINEAR_OPT*translation
-            self.cmdvel.angular.z = pd *CMD_ANGULAR_K
+            self.cmdvel.angular.z = pid *CMD_ANGULAR_K
 
         # Angular limit
         if self.cmdvel.angular.z > CMD_ANGULAR_LIMIT:
@@ -169,12 +174,12 @@ class look_ahead():
         rr = rospy.Rate(frequency)
         seq = 1
         KP = 0
-        KD = 0
+        KI = 0
         look_ahead_dist = 0
         while not rospy.is_shutdown():
             # mission checker
             if self.waypoint_total_seq != len(self.waypoint_seq) or self.waypoint_total_seq == 0:
-                seq = 2
+                seq = 1
                 rospy.loginfo("mission_checker")
                 time.sleep(1)
                 continue
@@ -196,7 +201,7 @@ class look_ahead():
 
             # get the parameters of look-ahead control
             KP = rospy.get_param("/mavlink_ajk/Kp")
-            KD = rospy.get_param("/mavlink_ajk/Kd")
+            KI = rospy.get_param("/mavlink_ajk/Ki")
             look_ahead_dist = rospy.get_param("/mavlink_ajk/look_ahead")
 
             # waypoint with xy coordinate origin adjust
@@ -257,20 +262,22 @@ class look_ahead():
 
             # calculate the steering_value
             p = KP *steering_ang
-            d = KD *self.pre_steering_ang
-            pd_value = p - d
-            self.pre_steering_ang = steering_ang
+            i = KI *own_y_tf
+            
+            pid_value = p
+            if abs(own_y_tf) < I_CONTROL_DIST:
+                pid_value = p - i
 
-            ajk_steering = STEERING_NEUTRAL +LR_OPTIMUM *pd_value
+            ajk_steering = STEERING_NEUTRAL +LR_OPTIMUM *pid_value
             if translation < 0:
-                ajk_steering = STEERING_NEUTRAL -LR_OPTIMUM *pd_value 
+                ajk_steering = STEERING_NEUTRAL -LR_OPTIMUM *pid_value 
             ajk_translation = TRANSLATION_NEUTRAL +FB_OPTIMUM *translation
 
             # Restriction of ajk_steering
             if ajk_steering > TRANSLATION_NEUTRAL + LR_OPTIMUM:
-                   ajk_steering = TRANSLATION_NEUTRAL + LR_OPTIMUM
+                ajk_steering = TRANSLATION_NEUTRAL + LR_OPTIMUM
             elif ajk_steering < TRANSLATION_NEUTRAL - LR_OPTIMUM:
-                  ajk_steering = TRANSLATION_NEUTRAL - LR_OPTIMUM
+                ajk_steering = TRANSLATION_NEUTRAL - LR_OPTIMUM
 
             # If the yaw error is large, pivot turn.
             if abs(steering_ang) > yaw_tolerance:
@@ -291,7 +298,7 @@ class look_ahead():
             #print wp_x_adj, wp_y_adj, tf_angle/np.pi*180
 
             # for simulator
-            self.cmdvel_publisher(steering_ang, translation, pd_value)
+            self.cmdvel_publisher(steering_ang, translation, pid_value)
 
             # publish autonomous log
             self.auto_log.stamp = rospy.Time.now()
@@ -309,27 +316,15 @@ class look_ahead():
             self.auto_log.cross_track_error = -own_y_tf
 
             self.auto_log.Kp = KP
-            self.auto_log.Kd = KD
+            self.auto_log.Ki = KI
             self.auto_log.look_ahead_dist = look_ahead_dist
 
             self.auto_log.p = p
-            self.auto_log.d = d
+            self.auto_log.i = i
             self.auto_log.steering_ang = steering_ang
             self.auto_log.translation = self.ajk_value.translation
             self.auto_log.steering = self.ajk_value.steering
             self.auto_log_pub.publish(self.auto_log)
-
-            #print "sequence:", seq
-            #print "target_x:", wp_x_tf, "target_y:", wp_y_tf
-            #print "own_x:", own_x_tf, "own_y:", own_y_tf
-            #print "cross_track_error:", own_y_tf
-            #print "front_ang:", front_steering_ang, "rear_ang", rear_steering_ang
-            #print "steering_ang:", steering_ang
-            #print "p:", p
-            #print "d:", d
-            #print "pd:", pd_value 
-            #print self.ajk_value.translation, self.ajk_value.steering
-            #print
 
             # when reaching the look-ahead distance, read the next waypoint.
             if (wp_x_tf - own_x_tf) < x_tolerance:
