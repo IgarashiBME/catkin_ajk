@@ -52,6 +52,7 @@ find_package(catkin REQUIRED COMPONENTS
    NavPVT.msg
    MAV_Mission.msg
    MAV_Modes.msg
+   MAV_Joystick.msg
  )
 
 ## Generate services in the 'srv' folder

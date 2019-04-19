@@ -32,6 +32,7 @@
 /* custom ROS messages */
 #include "mavlink_ajk/MAV_Mission.h"
 #include "mavlink_ajk/MAV_Modes.h"
+#include "mavlink_ajk/MAV_Joystick.h"
 #include "look_ahead/Auto_Log.h"
 #include "ubx_analyzer/RELPOSNED.h"
 #include "ubx_analyzer/UTMHP.h"
@@ -193,6 +194,9 @@ int main(int argc, char **argv){
 
     ros::Publisher pub_modes = n.advertise<mavlink_ajk::MAV_Modes>("/mav/modes", 1);
     mavlink_ajk::MAV_Modes modes_rosmsg;
+
+    ros::Publisher pub_joystick = n.advertise<mavlink_ajk::MAV_Joystick>("/mav/joystick", 1);
+    mavlink_ajk::MAV_Joystick joystick_rosmsg;
 
     while (!ros::ok());
 
@@ -457,8 +461,16 @@ int main(int argc, char **argv){
                 manual_z = mavmc.z;
                 manual_r = mavmc.r;
                 manual_buttons = mavmc.buttons;
-                printf("target:%i, x:%i, y:%i, z:%i, r:%i, buttons:%i\n", 
+                printf("target:%i, pitch:%i, roll:%i, Throttle:%i, Yaw:%i, buttons:%i\n", 
                        manual_target, manual_x, manual_y, manual_z, manual_r, manual_buttons);
+
+                /* publish ARM-DISARM ROS message */
+                joystick_rosmsg.roll = manual_y;
+                joystick_rosmsg.pitch = manual_x;
+                joystick_rosmsg.yaw = manual_r;
+                joystick_rosmsg.throttle = manual_z;
+                pub_joystick.publish(joystick_rosmsg);
+
                 break;
             }
 
