@@ -65,7 +65,7 @@ class ntrip():
             time.sleep(0.01)
 
             data = self.s.recv(1024)
-            print(binascii.b2a_hex(data))
+            #print(binascii.b2a_hex(data))
 
             self.pub_rtcm.publish(binascii.b2a_hex(data))
             sys.stdout.flush()
