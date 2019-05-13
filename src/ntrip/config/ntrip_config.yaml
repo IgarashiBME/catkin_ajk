@@ -1,5 +1,0 @@
-ntrip_address:
-ntrip_port: 2101
-ntrip_username: 
-ntrip_password: 
-ntrip_mountpoint: VRS_GNSS_RTCM3

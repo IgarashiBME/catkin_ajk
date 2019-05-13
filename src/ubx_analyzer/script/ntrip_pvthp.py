@@ -63,6 +63,7 @@ class ublox():
 
         # initialize the valiable
         self.fix_status = 0
+        self.satellites = 0
 
     def loop(self):
         # searching for UBX-NAV-Class headers
@@ -91,8 +92,8 @@ class ublox():
                     elif Data == RXM_CLASS:
                         # UBX-RXM-RTCM checker
                         Data = binascii.b2a_hex(self.ser.read())
-                        if Data == RTCM_ID:
-                            print "RTCM"
+                        #if Data == RTCM_ID:
+                            #print "RTCM"
                             
 
             if Ascii == HEADER_NMEA:
