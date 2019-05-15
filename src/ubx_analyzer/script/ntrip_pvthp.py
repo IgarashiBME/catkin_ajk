@@ -141,9 +141,9 @@ class ublox():
             self.navsat.latitude = latitudeHp
             self.navsat.longitude = longitudeHp
             self.navsat.altitude = heightHp
-            self.navsat.position_covariance = np.array([hAcc,  0.0,  0.0,
-                                                         0.0, hAcc,  0.0,
-                                                         0.0,  0.0, vAcc])
+            self.navsat.position_covariance = np.array([(hAcc*hAcc)/2,           0.0,           0.0,
+                                                                  0.0, (hAcc*hAcc)/2,           0.0,
+                                                                  0.0,           0.0, (vAcc*vAcc)/3])
             self.pub_navsat.publish(self.navsat)
             
             # Publish utm_hp
