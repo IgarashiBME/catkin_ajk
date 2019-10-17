@@ -223,6 +223,26 @@ class ublox():
                                                               NAV_PVT_Data[48], NAV_PVT_Data[49]))[0])
             pDOP = int(struct.unpack('h', struct.pack('BB', NAV_PVT_Data[78], NAV_PVT_Data[79]))[0])
 
+            # velocity
+            velN = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[50], NAV_PVT_Data[51], 
+                                         NAV_PVT_Data[52], NAV_PVT_Data[53]))[0])/1000.0
+            velE = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[54], NAV_PVT_Data[55], 
+                                         NAV_PVT_Data[56], NAV_PVT_Data[57]))[0])/1000.0
+            velD = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[58], NAV_PVT_Data[59], 
+                                         NAV_PVT_Data[60], NAV_PVT_Data[61]))[0])/1000.0
+            gSpeed = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[62], NAV_PVT_Data[63], 
+                                         NAV_PVT_Data[64], NAV_PVT_Data[65]))[0])/1000.0
+
+            # heading
+            headMot = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[66], NAV_PVT_Data[67], 
+                                         NAV_PVT_Data[68], NAV_PVT_Data[69]))[0])/1000.0            
+            sAcc = float(struct.unpack('I', struct.pack('BBBB', NAV_PVT_Data[70], NAV_PVT_Data[71],
+                                                              NAV_PVT_Data[72], NAV_PVT_Data[73]))[0])
+            headAcc = float(struct.unpack('I', struct.pack('BBBB', NAV_PVT_Data[74], NAV_PVT_Data[75],
+                                                              NAV_PVT_Data[76], NAV_PVT_Data[77]))[0])
+            headVeh = float(struct.unpack('i', struct.pack('BBBB', NAV_PVT_Data[86], NAV_PVT_Data[87], 
+                                         NAV_PVT_Data[88], NAV_PVT_Data[89]))[0])/1000.0   
+
             # publish rostime and gpstime
             self.pub_gpst.publish(str(rospy.Time.now()) +"," +str(gpst))
 
@@ -243,6 +263,14 @@ class ublox():
             self.navpvt_data.hAcc = hAcc
             self.navpvt_data.vAcc = vAcc
             self.navpvt_data.pDOP = pDOP
+
+            self.navpvt_data.velN = velN
+            self.navpvt_data.velE = velE
+            self.navpvt_data.velD = velD
+            self.navpvt_data.headMot = headMot
+            self.navpvt_data.sAcc = sAcc
+            self.navpvt_data.headAcc = headAcc
+            self.navpvt_data.headAcc = headVeh
             self.pub_navpvt.publish(self.navpvt_data)            
 
             # print section
