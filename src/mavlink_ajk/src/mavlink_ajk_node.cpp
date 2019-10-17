@@ -27,7 +27,7 @@
 /* ROS library */
 #include "ros/ros.h"
 #include "geometry_msgs/Twist.h"
-#include "std_msgs/Int16.h"
+#include "std_msgs/UInt16.h"
 
 /* custom ROS messages */
 #include "mavlink_ajk/MAV_Mission.h"
@@ -48,17 +48,18 @@
 #define ARDUPILOT_GUIDED_ARMED 217
 #define ARDUPILOT_GUIDED_DISARMED 89
 
+/* ESTIMATOR_STATUS_FLAG */
+#define GOOD_ESTIMATOR_ATTITUDE 1
+
 /* Interval */
 #define COMMON_INTERVAL 1000000
 #define LIGHT_INTERVAL 100000
-
-#define NOT_SAVED_PARAM "shutdown"
 
 /* Joystick */
 #define JOY_YAW_NEUTRAL 0
 #define JOY_TH_NEUTRAL 500
 #define JOY_THRESHOLD 10
-
+#define NOT_SAVED_PARAM "shutdown"
 using namespace std;
 
 uint64_t microsSinceEpoch();
@@ -81,9 +82,12 @@ public:
 
     void auto_log_callback(const look_ahead::Auto_Log::ConstPtr& msg);
     int current_seq = 0;
+    float cross_track_error = 0;
+    float angular_z = 0;
 
     void move_base_callback(const ubx_analyzer::RELPOSNED::ConstPtr& msg);
     double yaw;
+    uint16_t move_base_fix_status = 0;
 };
 
 class QGC_parameter{
@@ -94,8 +98,9 @@ public:
     float Ki_value;
     float Kd_value;
     float look_ahead_value;
-    float shutdown_value;
-    float ajk_engine_value;
+    float i_control_dist_value;
+    float i_limit_value;
+    float linear_velocity_value;
 };
 
 void Listener::gnss_callback(const ubx_analyzer::UTMHP::ConstPtr& msg){
@@ -111,7 +116,7 @@ void Listener::gnss_callback(const ubx_analyzer::UTMHP::ConstPtr& msg){
             fix_type = GPS_FIX_TYPE_RTK_FLOAT;
             break;
         case 0:
-            fix_type = GPS_FIX_TYPE_NO_FIX;
+            fix_type = GPS_FIX_TYPE_DGPS;
             break;
     }
     //ROS_INFO("info [%f]", msg->lat);
@@ -119,10 +124,23 @@ void Listener::gnss_callback(const ubx_analyzer::UTMHP::ConstPtr& msg){
 
 void Listener::auto_log_callback(const look_ahead::Auto_Log::ConstPtr& msg){
     current_seq = msg->waypoint_seq;
+    cross_track_error = msg->cross_track_error;
+    angular_z = msg->angular_z;
 }
 
 void Listener::move_base_callback(const ubx_analyzer::RELPOSNED::ConstPtr& msg){
     yaw = msg->QGC_heading;
+    switch(msg->fix_status){
+        case 2:
+            move_base_fix_status = GOOD_ESTIMATOR_ATTITUDE;
+            break;
+        case 1:
+            move_base_fix_status = 0;
+            break;
+        case 0:
+            move_base_fix_status = 0;
+            break;
+    }
 }
 
 void QGC_parameter::parameter_getter(){
@@ -130,8 +148,9 @@ void QGC_parameter::parameter_getter(){
     ros::param::get("/mavlink_ajk/Ki", Ki_value);
     ros::param::get("/mavlink_ajk/Kd", Kd_value);
     ros::param::get("/mavlink_ajk/look_ahead", look_ahead_value);
-    ros::param::get("/mavlink_ajk/shutdown", shutdown_value);
-    ros::param::get("/mavlink_ajk/ajk_engine",  ajk_engine_value);
+    ros::param::get("/mavlink_ajk/i_control_dist", i_control_dist_value);
+    ros::param::get("/mavlink_ajk/i_limit",  i_limit_value);
+    ros::param::get("/mavlink_ajk/linear_velocity",  linear_velocity_value);
 }
 
 int main(int argc, char **argv){
@@ -148,7 +167,9 @@ int main(int argc, char **argv){
     uint16_t len;
     int i = 0;
     unsigned int temp = 0;
-    unsigned int mission_total_seq = 0;
+
+    bool is_mission_req = false;
+    int mission_total_seq = 0;
     unsigned int mission_seq = 0;
     int pre_mission_seq = -1;
 
@@ -203,14 +224,16 @@ int main(int argc, char **argv){
     ros::Publisher pub_joystick = n.advertise<mavlink_ajk::MAV_Joystick>("/mav/joystick", 1);
     mavlink_ajk::MAV_Joystick joystick_rosmsg;
 
+    ros::Publisher pub_mission_set_current = n.advertise<std_msgs::UInt16>("/mav/mission_set_current", 10);
+
     while (!ros::ok());
 
     /* ROS parameters */
     std::string param_path;
     ros::param::get("~param_path", param_path);
+    ros::param::get("/mission_total_seq", mission_total_seq);
     qgc_param.parameter_getter();
-    ros::param::set("/mavlink_ajk/shutdown", 0);
-    //printf("%f,%f,%f", qgc_param.Kp_value, qgc_param.Kd_value, qgc_param.look_ahead_value);
+    //printf("%i", mission_total_seq);
     char rosdump_cmd[100];
     sprintf(rosdump_cmd, "rosparam dump -v %s /mavlink_ajk", param_path.c_str());
     system(rosdump_cmd);
@@ -293,6 +316,12 @@ int main(int argc, char **argv){
             len = mavlink_msg_to_send_buffer(buf, &mavmsg);
             bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 
+            /* Send ESTIMATOR_STATUS */
+            mavlink_msg_estimator_status_pack(1, 200, &mavmsg, microsSinceEpoch(), listener.move_base_fix_status,
+                                              listener.angular_z, 0, 0, 0, 0, 0, listener.cross_track_error, 0);
+            len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+            bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+
             pre_heartbeat_time = microsSinceEpoch();
 
             /* publish ARM-DISARM ROS message */
@@ -302,8 +331,10 @@ int main(int argc, char **argv){
             pub_modes.publish(modes_rosmsg);
 
             /* send mission_current */
+            std::cout << listener.current_seq << std::endl;
+            std::cout << mission_total_seq << std::endl;
             if (base_mode == ARDUPILOT_GUIDED_ARMED){
-                if (listener.current_seq+1 == mission_total_seq){
+                if (listener.current_seq > mission_total_seq){
                     base_mode = ARDUPILOT_GUIDED_DISARMED;
                     mission_start = false;
                 }
@@ -315,16 +346,16 @@ int main(int argc, char **argv){
         }
 
         /* when the gcs heartbeat was stopped, then DISARM and mission_start is False */
-        if (microsSinceEpoch() - last_gcs_heartbeat_time > gcs_heartbeat_interval){
-            usleep(COMMON_INTERVAL);
-            ROS_INFO("GCS signal was interrupted");
-            //std::cout << "GCS signal was interrupted\n" << std::endl;
-            base_mode = ARDUPILOT_GUIDED_DISARMED;
-            mission_start = false;            
-        }
+        //if (microsSinceEpoch() - last_gcs_heartbeat_time > gcs_heartbeat_interval){
+        //    usleep(COMMON_INTERVAL);
+        //    ROS_INFO("GCS signal was interrupted");
+        //    //std::cout << "GCS signal was interrupted\n" << std::endl;
+        //    base_mode = ARDUPILOT_GUIDED_DISARMED;
+        //    mission_start = false;            
+        //}
 
         /* Mission Request */
-        if (mission_total_seq > 0 && microsSinceEpoch() - pre_request_time > request_interval){
+        if (is_mission_req == true && microsSinceEpoch() - pre_request_time > request_interval){
             //printf("request\n");
             //std::cout << microsSinceEpoch() - pre_request_time << std::endl;
             mavlink_msg_mission_request_int_pack(1, 200, &mavmsg, 0, 0, mission_seq);
@@ -350,7 +381,6 @@ int main(int argc, char **argv){
             ros::param::set(param_cmd, parameter_value);
 
             if (strcmp(parameter_id, NOT_SAVED_PARAM)){
-                ros::param::set("/mavlink_ajk/shutdown", 0); // shutdown parameter must not save
                 sprintf(rosdump_cmd, "rosparam dump -v %s /mavlink_ajk", param_path.c_str());
                 system(rosdump_cmd);
             }
@@ -400,32 +430,37 @@ int main(int argc, char **argv){
                 qgc_param.parameter_getter();
                 usleep(LIGHT_INTERVAL);
 
-                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kp", qgc_param.Kp_value, MAVLINK_TYPE_FLOAT, 6, 0);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kp", qgc_param.Kp_value, MAVLINK_TYPE_FLOAT, 7, 0);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
                 usleep(LIGHT_INTERVAL);
-                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Ki", qgc_param.Ki_value, MAVLINK_TYPE_FLOAT, 6, 1);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Ki", qgc_param.Ki_value, MAVLINK_TYPE_FLOAT, 7, 1);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
                 usleep(LIGHT_INTERVAL);
-                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kd", qgc_param.Kd_value, MAVLINK_TYPE_FLOAT, 6, 2);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "Kd", qgc_param.Kd_value, MAVLINK_TYPE_FLOAT, 7, 2);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
                 usleep(LIGHT_INTERVAL);
-                mavlink_msg_param_value_pack(1, 1, &mavmsg, "look_ahead", qgc_param.look_ahead_value, MAVLINK_TYPE_FLOAT, 6, 3);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "look_ahead", qgc_param.look_ahead_value, MAVLINK_TYPE_FLOAT, 7, 3);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
                 usleep(LIGHT_INTERVAL);
-                mavlink_msg_param_value_pack(1, 1, &mavmsg, "shutdown", qgc_param.shutdown_value, MAVLINK_TYPE_FLOAT, 6, 4);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "i_control_dist", qgc_param.i_control_dist_value, MAVLINK_TYPE_FLOAT, 7, 4);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
                 usleep(LIGHT_INTERVAL);
-                mavlink_msg_param_value_pack(1, 1, &mavmsg, "ajk_engine", qgc_param.ajk_engine_value, MAVLINK_TYPE_FLOAT, 6, 5);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "i_limit", qgc_param.i_limit_value, MAVLINK_TYPE_FLOAT, 7, 5);
+                len = mavlink_msg_to_send_buffer(buf, &mavmsg);
+                bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
+                                    sizeof(struct sockaddr_in));
+                usleep(LIGHT_INTERVAL);
+                mavlink_msg_param_value_pack(1, 1, &mavmsg, "linear_velocity", qgc_param.linear_velocity_value, MAVLINK_TYPE_FLOAT, 7, 6);
                 len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                 bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                     sizeof(struct sockaddr_in));
@@ -444,11 +479,24 @@ int main(int argc, char **argv){
                 break;
             }
 
+            case MAVLINK_MSG_ID_MISSION_SET_CURRENT:{ // MAV ID 41
+                mavlink_mission_set_current_t mavmsc;
+                std_msgs::UInt16 mission_set_current;
+                    
+                mavlink_msg_mission_set_current_decode(&mavmsg, &mavmsc);
+                mission_set_current.data = mavmsc.seq;
+
+                pub_mission_set_current.publish(mission_set_current);
+                printf("mission_set_current: %i\n", mavmsc.seq);
+                break;
+            }
+
             case MAVLINK_MSG_ID_MISSION_COUNT:{ // MAV ID 44
                 mavlink_mission_count_t mavmc;
                 printf("mission count was received\n");
                     
                 mavlink_msg_mission_count_decode(&mavmsg, &mavmc);
+                is_mission_req = true;
                 mission_total_seq = mavmc.count;
                 mission_seq = 0;
                 printf("%i\n", mission_total_seq);
@@ -516,12 +564,16 @@ int main(int argc, char **argv){
                 }
 
                 // if mission sequence is end, send mission ack
-                if (mission_seq == mission_total_seq){
+                if (is_mission_req == true && mission_seq == mission_total_seq){
                     mavlink_msg_mission_ack_pack(1, 200, &mavmsg, 0, 0, MAV_MISSION_TYPE_MISSION);
                     len = mavlink_msg_to_send_buffer(buf, &mavmsg);
                     bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, 
                                         sizeof(struct sockaddr_in));
-                    mission_total_seq = 0;
+
+                    ros::param::set("/mission_total_seq", mission_total_seq);                    
+
+                    // mission request is end
+                    is_mission_req = false;
                 }
                 break;
             }
