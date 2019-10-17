@@ -62,7 +62,7 @@ class ntrip():
 
             self.s.send(self.gngga.encode('ascii'))
 
-            time.sleep(0.01)
+            #time.sleep(0.01)
 
             data = self.s.recv(1024)
             #print(binascii.b2a_hex(data))
