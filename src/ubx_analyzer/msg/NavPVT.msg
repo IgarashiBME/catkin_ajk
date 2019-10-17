@@ -30,4 +30,13 @@ int32 hMSL              # Height above mean sea level [mm]
 uint32 hAcc             # Horizontal Accuracy Estimate [mm]
 uint32 vAcc             # Vertical Accuracy Estimate [mm]
 
+int32 velN              # NED north velocity [mm/s]
+int32 velE              # NED east velocity [mm/s]
+int32 velD              # NED down velocity [mm/s]
+int32 gSpeed            # Ground Speed (2-D) [mm/s]
+int32 headMot           # Heading of motion 2-D [deg / 1e-5]
+uint32 sAcc             # Speed Accuracy Estimate [mm/s]
+uint32 headAcc          # Heading Accuracy Estimate (both motion & vehicle) 
+
 uint16 pDOP             # Position DOP [1 / 0.01]
+int32 headVeh           # Heading of vehicle (2-D) [deg / 1e-5]
