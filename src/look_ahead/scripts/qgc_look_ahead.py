@@ -18,6 +18,8 @@ from look_ahead.msg import AJK_value
 from look_ahead.msg import Auto_Log
 from mavlink_ajk.msg import MAV_Mission
 from mavlink_ajk.msg import MAV_Modes
+from ubx_analyzer.msg import NavPVT
+from ubx_analyzer.msg import RELPOSNED
 
 from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
@@ -75,6 +77,13 @@ class look_ahead():
         self.base_mode = 0
         self.custom_mode = 0
 
+        # related to GNSS
+        self.iTOW = 0
+        self.rtk_status = 0
+        self.movingbase_status = 0
+        self.latitude = 0
+        self.longitude = 0
+
         rospy.init_node('look_ahead_following')
         rospy.on_shutdown(self.shutdown)
 
@@ -83,6 +92,8 @@ class look_ahead():
         #rospy.Subscriber('/gazebo/model_states', ModelStates, self.truth_callback)
         rospy.Subscriber('/mav/mission', MAV_Mission, self.load_waypoint)
         rospy.Subscriber('/mav/modes', MAV_Modes, self.mav_modes)
+        rospy.Subscriber('/navpvt', NavPVT, self.navpvt_callback, queue_size = 1)
+        rospy.Subscriber('/relposned', RELPOSNED, self.relposned_callback, queue_size = 1)
         self.ajk_pub = rospy.Publisher('/ajk_auto', AJK_value, queue_size = 1)
         self.ajk_value = AJK_value()
         self.auto_log_pub = rospy.Publisher('/auto_log', Auto_Log, queue_size = 1)
@@ -99,18 +110,6 @@ class look_ahead():
         self.q[1] = msg.pose.pose.orientation.y
         self.q[2] = msg.pose.pose.orientation.z
         self.q[3] = msg.pose.pose.orientation.w
-
-    # truth position of simulator
-    #def truth_callback(self, msg):
-    #    for i, name in enumerate(msg.name):
-    #        if name == "sim_ajk":
-    #            self.x = msg.pose[i].position.x
-    #            self.y = msg.pose[i].position.y
-    #            # vehicle's quaternion data in /odom (odometry of ROS message)
-    #            self.q[0] = msg.pose[i].orientation.x
-    #            self.q[1] = msg.pose[i].orientation.y
-    #            self.q[2] = msg.pose[i].orientation.z
-    #            self.q[3] = msg.pose[i].orientation.w
 
     # load waypoint list
     def load_waypoint(self, msg):
@@ -130,6 +129,7 @@ class look_ahead():
 
         # if msg.seq is 0, then reset variables and receive the new mission's
         if msg.seq == 0:
+            self.seq = 1
             self.waypoint_x = []
             self.waypoint_y = []
             self.waypoint_seq = []
@@ -144,6 +144,15 @@ class look_ahead():
         self.mission_start = msg.mission_start
         self.base_mode = msg.base_mode
         self.custom_mode = msg.custom_mode
+
+    def navpvt_callback(self, msg):
+        self.iTOW = msg.iTOW
+        self.rtk_status = msg.fix_status
+        self.latitude = msg.lat
+        self.longitude = msg.lon
+
+    def relposned_callback(self, msg):
+        self.movingbase_status = msg.fix_status
 
     def cmdvel_publisher(self, steering_ang, translation, pid):
         if abs(steering_ang) > yaw_tolerance:
@@ -169,14 +178,36 @@ class look_ahead():
 
     def loop(self):
         rr = rospy.Rate(frequency)
-        seq = 1
+        self.seq = 1
         KP = 0
         KI = 0
+        KD = 0
+        d = 0
         look_ahead_dist = 0
+        i_control_dist = 0
+        i_limit = 0
+        last_iTOW = 0
+        self.last_steering_ang = 0
+        self.pivot_count = 0
         while not rospy.is_shutdown():
+            # if the iTOW has not increased, skip subsequent scripts 
+            if self.iTOW - last_iTOW == 0:
+                rospy.loginfo("warning: The value of the GNSS receiver is not updated")
+                time.sleep(1)
+                continue
+
+            # save the last value of iTOW(GNSS time)
+            last_iTOW = self.iTOW
+
+            # if the latitude and longitude are abnormal values, skip subsequent scripts 
+            if self.latitude == 0 or self.longitude == 0:
+                rospy.loginfo("warning: latitude or longitude was zero")
+                time.sleep(1)
+                continue
+
             # mission checker
             if self.waypoint_total_seq != len(self.waypoint_seq) or self.waypoint_total_seq == 0:
-                seq = 1
+                self.seq = 1
                 rospy.loginfo("mission_checker")
                 time.sleep(1)
                 continue
@@ -202,16 +233,10 @@ class look_ahead():
             look_ahead_dist = rospy.get_param("/mavlink_ajk/look_ahead")
 
             # waypoint with xy coordinate origin adjust
-            if seq == 0:
-                wp_x_adj = self.waypoint_x[seq] - own_x
-                wp_y_adj = self.waypoint_y[seq] - own_y
-                own_x_adj = 0
-                own_y_adj = 0
-            else:
-                wp_x_adj = self.waypoint_x[seq] - self.waypoint_x[seq-1]
-                wp_y_adj = self.waypoint_y[seq] - self.waypoint_y[seq-1]
-                own_x_adj = own_x - self.waypoint_x[seq-1]
-                own_y_adj = own_y - self.waypoint_y[seq-1]
+            wp_x_adj = self.waypoint_x[self.seq] - self.waypoint_x[self.seq-1]
+            wp_y_adj = self.waypoint_y[self.seq] - self.waypoint_y[self.seq-1]
+            own_x_adj = own_x - self.waypoint_x[self.seq-1]
+            own_y_adj = own_y - self.waypoint_y[self.seq-1]
 
             # coordinate transformation of waypoint
             tf_angle = np.arctan2(wp_y_adj, wp_x_adj)
@@ -297,9 +322,11 @@ class look_ahead():
 
             # publish autonomous log
             self.auto_log.stamp = rospy.Time.now()
-            self.auto_log.waypoint_seq = seq
-            self.auto_log.waypoint_x = self.waypoint_x[seq]
-            self.auto_log.waypoint_y = self.waypoint_y[seq]
+            self.auto_log.waypoint_seq = self.seq
+            self.auto_log.waypoint_start_x = self.waypoint_x[self.seq-1]
+            self.auto_log.waypoint_start_y = self.waypoint_y[self.seq-1]
+            self.auto_log.waypoint_end_x = self.waypoint_x[self.seq]
+            self.auto_log.waypoint_end_y = self.waypoint_y[self.seq]
             self.auto_log.own_x = own_x
             self.auto_log.own_y = own_y
             self.auto_log.own_yaw = euler_from_quaternion(front_q)[2]/np.pi *180
@@ -323,19 +350,19 @@ class look_ahead():
 
             # when reaching the look-ahead distance, read the next waypoint.
             if (wp_x_tf - own_x_tf) < x_tolerance:
-                pre_wp_x = self.waypoint_x[seq]
-                pre_wp_y = self.waypoint_y[seq]
-                seq = seq + 1
+                pre_wp_x = self.waypoint_x[self.seq]
+                pre_wp_y = self.waypoint_y[self.seq]
+                self.seq = self.seq + 1
                 try:
                     a = np.array([pre_wp_x, pre_wp_y])
-                    b = np.array([self.waypoint_x[seq], self.waypoint_y[seq]])
+                    b = np.array([self.waypoint_x[self.seq], self.waypoint_y[self.seq]])
 
                     if np.linalg.norm(a-b) < SPACING:
-                        seq = seq + 1
+                        self.seq = self.seq + 1
                 except IndexError:
                     pass
 
-            if seq >= len(self.waypoint_x):
+            if self.seq >= len(self.waypoint_x):
                 self.ajk_value.stamp = rospy.Time.now()
                 self.ajk_value.translation = TRANSLATION_NEUTRAL
                 self.ajk_value.steering = STEERING_NEUTRAL
@@ -344,7 +371,7 @@ class look_ahead():
                 self.cmdvel.linear.x = 0
                 self.cmdvel.angular.z = 0
                 self.cmdvel_pub.publish(self.cmdvel)
-                seq = 1
+                self.seq = 1
                 print "mission_end"
                 break
             #print
