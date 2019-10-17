@@ -145,27 +145,26 @@ class ublox():
             # convert to quaternion
             heading_q = quaternion_from_euler(0, 0, heading)
 
-            if fix_status == 2:
-                # Publish heading with ROS Imu format                
-                self.moving_base.header.frame_id = "moving_base"
-                self.moving_base.header.stamp = rospy.Time.now()
-                self.moving_base.orientation.x = heading_q[0]
-                self.moving_base.orientation.y = heading_q[1]
-                self.moving_base.orientation.z = heading_q[2]
-                self.moving_base.orientation.w = heading_q[3]
-                self.pub_moving_base.publish(self.moving_base)
+            # Publish heading with ROS Imu format                
+            self.moving_base.header.frame_id = "moving_base"
+            self.moving_base.header.stamp = rospy.Time.now()
+            self.moving_base.orientation.x = heading_q[0]
+            self.moving_base.orientation.y = heading_q[1]
+            self.moving_base.orientation.z = heading_q[2]
+            self.moving_base.orientation.w = heading_q[3]
+            self.pub_moving_base.publish(self.moving_base)
 
-                # Publish heading and UTM with ROS Odom format
-                self.gnss_odom.header.frame_id = "gnss_odom"
-                self.gnss_odom.header.stamp = rospy.Time.now()
-                self.gnss_odom.pose.pose.position.x = self.utm_hp_x
-                self.gnss_odom.pose.pose.position.y = self.utm_hp_y
-                self.gnss_odom.pose.pose.position.z = self.utm_hp_z
-                self.gnss_odom.pose.pose.orientation.x = heading_q[0]
-                self.gnss_odom.pose.pose.orientation.y = heading_q[1]
-                self.gnss_odom.pose.pose.orientation.z = heading_q[2]
-                self.gnss_odom.pose.pose.orientation.w = heading_q[3]
-                self.pub_gnss_odom.publish(self.gnss_odom)
+            # Publish heading and UTM with ROS Odom format
+            self.gnss_odom.header.frame_id = "gnss_odom"
+            self.gnss_odom.header.stamp = rospy.Time.now()
+            self.gnss_odom.pose.pose.position.x = self.utm_hp_x
+            self.gnss_odom.pose.pose.position.y = self.utm_hp_y
+            self.gnss_odom.pose.pose.position.z = self.utm_hp_z
+            self.gnss_odom.pose.pose.orientation.x = heading_q[0]
+            self.gnss_odom.pose.pose.orientation.y = heading_q[1]
+            self.gnss_odom.pose.pose.orientation.z = heading_q[2]
+            self.gnss_odom.pose.pose.orientation.w = heading_q[3]
+            self.pub_gnss_odom.publish(self.gnss_odom)
 
             #print iTOW
             #print fix_status, fix_str
