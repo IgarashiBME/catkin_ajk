@@ -1,0 +1,15 @@
+[Unit]
+Description=look_ahead launcher
+After=roscore.service
+Requires=roscore.service
+
+[Service]
+User=admin
+ExecStartPre=/bin/bash -l -c 'rostopic list'
+ExecStart=/usr/bin/screen -S look_ahead -ADm bash -l -c 'roslaunch look_ahead qgc_look_ahead.launch'
+Type=simple
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
