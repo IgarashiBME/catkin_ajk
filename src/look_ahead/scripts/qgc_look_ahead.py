@@ -11,7 +11,6 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 from std_msgs.msg import String
 from geometry_msgs.msg import Twist
-from gazebo_msgs.msg import ModelStates
 
 # ROS custom message
 from look_ahead.msg import AJK_value
