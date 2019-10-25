@@ -1,9 +1,4 @@
 <launch>
-  <arg name="rtk_config_file" default="$(find ubx_analyzer)/config/rtk_rover.yaml"/> 
-  <node pkg="ubx_analyzer" type="pvthp.py" name="pvthp" output="screen">
-    <rosparam file="$(arg rtk_config_file)" command="load"/>
-  </node>
-
   <arg name="mb_config_file" default="$(find ubx_analyzer)/config/moving_base_rover.yaml"/> 
   <node pkg="ubx_analyzer" type="moving_base.py" name="moving_base" output="screen">
     <rosparam file="$(arg mb_config_file)" command="load"/>
