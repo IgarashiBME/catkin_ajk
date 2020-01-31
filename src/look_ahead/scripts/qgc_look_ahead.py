@@ -37,9 +37,9 @@ BACKWARD_CONST = -1
 # AJK
 TRANSLATION_NEUTRAL = 512     # neutral value
 STEERING_NEUTRAL = 512        # neutral value
-RIGHT_PIVOT = 332
-LEFT_PIVOT = 692
-FB_OPTIMUM = 220
+RIGHT_PIVOT = 224
+LEFT_PIVOT = 800
+FB_OPTIMUM = 300
 LR_OPTIMUM = 60
 
 # for simulator or test vehicle
@@ -190,10 +190,11 @@ class look_ahead():
         self.pivot_count = 0
         while not rospy.is_shutdown():
             # if the iTOW has not increased, skip subsequent scripts 
-            if self.iTOW - last_iTOW == 0:
-                rospy.loginfo("warning: The value of the GNSS receiver is not updated")
-                time.sleep(1)
-                continue
+            #if self.iTOW - last_iTOW == 0:
+            #    print self.iTOW, last_iTOW
+            #    rospy.loginfo("warning: The value of the GNSS receiver is not updated")
+            #    time.sleep(1)
+            #    continue
 
             # save the last value of iTOW(GNSS time)
             last_iTOW = self.iTOW

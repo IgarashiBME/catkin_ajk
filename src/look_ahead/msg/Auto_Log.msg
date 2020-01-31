@@ -32,3 +32,5 @@ float64 d
 float64 steering_ang #[degree]
 float64 linear_x  # [meter/sec]
 float64 angular_z # [rad/sec]
+float64 translation
+float64 steering

@@ -38,9 +38,9 @@ BACKWARD_CONST = -1
 # AJK
 TRANSLATION_NEUTRAL = 512     # neutral value
 STEERING_NEUTRAL = 512        # neutral value
-RIGHT_PIVOT = 332
-LEFT_PIVOT = 692
-FB_OPTIMUM = 220
+RIGHT_PIVOT = 174
+LEFT_PIVOT = 850
+FB_OPTIMUM = 300
 LR_OPTIMUM = 60
 
 # for simulator or test vehicle
@@ -334,8 +334,8 @@ class look_ahead():
             self.auto_log.p = p
             self.auto_log.i = i
             self.auto_log.steering_ang = steering_ang
-            self.auto_log.translation = self.ajk_value.translation
-            self.auto_log.steering = self.ajk_value.steering
+            #self.auto_log.translation = self.ajk_value.translation
+            #self.auto_log.steering = self.ajk_value.steering
             self.auto_log_pub.publish(self.auto_log)
 
             # when reaching the look-ahead distance, read the next waypoint.
