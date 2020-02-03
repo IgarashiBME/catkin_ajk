@@ -373,7 +373,7 @@ class look_ahead():
                 self.cmdvel_pub.publish(self.cmdvel)
                 self.seq = 1
                 print "mission_end"
-                break
+                time.sleep(5)
             #print
             #time.sleep(1/frequency)
             rr.sleep()
