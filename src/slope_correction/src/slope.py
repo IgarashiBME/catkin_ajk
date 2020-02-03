@@ -21,9 +21,13 @@ class slope_correction():
         rospy.Subscriber('/imu/data', Imu, self.imu_callback, queue_size = 1)
         rospy.Subscriber('/gnss_odom', Odometry, self.odom_callback, queue_size = 1)
 
+        # ROS publisher
+        self.pub_odom = rospy.Publisher('/corrected_odom', Odometry, queue_size = 1)
+        self.odom = Odometry()
+
         # init valiables
         self.imu_roll = 0
-        self.pitch = 0
+        self.imu_pitch = 0
         self.x = 0
         self.y = 0
 
@@ -44,6 +48,7 @@ class slope_correction():
         # UTM coordinate
         utm_x = msg.pose.pose.position.x
         utm_y = msg.pose.pose.position.y
+        utm_z = msg.pose.pose.position.z
 
         # quaternion from yaw data of GNSS Moving-Base (roll, pitch are zero)
         qx = msg.pose.pose.orientation.x
@@ -75,19 +80,34 @@ class slope_correction():
 
         R = Rz.dot(Ry).dot(Rz)
 
-        # 3D-matrix from UTM and height of antenna
-        A = np.array([[0],
-                      [0],
-                      [ANTENNA_HEIGHT]])
+        # 3D-matrix from height of antenna
+        offset = np.array([[0],
+                           [0],
+                           [ANTENNA_HEIGHT]])
 
-        B = R.dot(A)
+        rotated = R.dot(offset)
         #print r/np.pi*180, p/np.pi*180
-        print B
+        #print rotated
 
-        corrected_x = utm_x - B[0]
-        corrected_y = utm_y - B[1]
+        corrected_x = utm_x - rotated[0]
+        corrected_y = utm_y - rotated[1]
+        corrected_z = utm_z - rotated[2]
 
-        print corrected_x, corrected_y
+        corrected_q = quaternion_from_euler(r, p, y)
+
+        self.odom.header.stamp = rospy.Time.now()
+        self.odom.pose.pose.position.x = corrected_x
+        self.odom.pose.pose.position.y = corrected_y
+        self.odom.pose.pose.position.z = corrected_z
+        self.odom.pose.pose.orientation.x = corrected_q[0]
+        self.odom.pose.pose.orientation.y = corrected_q[1]
+        self.odom.pose.pose.orientation.z = corrected_q[2]
+        self.odom.pose.pose.orientation.w = corrected_q[3]
+        self.pub_odom.publish(self.odom)
+
+        print "roll:", r/np.pi*180, "pitch", p/np.pi*180, "yaw", y/np.pi*180
+        print "utm_x", utm_x, "utm_y", utm_y
+        print "corrected_x", corrected_x, "corrected_y", corrected_y, "\n"
 
     def shutdown(self):
         rospy.loginfo("slope_correction node was terminated")
