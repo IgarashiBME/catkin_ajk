@@ -10,7 +10,7 @@ from sensor_msgs.msg import Imu
 from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
 
-ANTENNA_HEIGHT = 0.5
+ANTENNA_HEIGHT = 1.0
 
 class slope_correction():
     def __init__(self):
@@ -64,34 +64,34 @@ class slope_correction():
 
         # rotation matrix
         # roll
-        Rx = np.array([[1,          0,         0],
-                       [0,  np.cos(r), np.sin(r)],
-                       [0, -np.sin(r), np.cos(r)]])
+        Rx = np.array([[1.0,        0.0,       0.0],
+                       [0.0,  np.cos(r), np.sin(r)],
+                       [0.0, -np.sin(r), np.cos(r)]])
 
         # pitch
-        Ry = np.array([[np.cos(p), 0, -np.sin(p)],
-                       [0,         1,          0],
-                       [np.sin(p), 0,  np.cos(p)]])   
+        Ry = np.array([[np.cos(p), 0.0, -np.sin(p)],
+                       [      0.0, 1.0,        0.0],
+                       [np.sin(p), 0.0,  np.cos(p)]])   
 
         # yaw
-        Rz = np.array([[ np.cos(y), np.sin(y), 0],
-                       [-np.sin(y), np.cos(y), 0],
-                       [         0,         0, 1]])
+        Rz = np.array([[ np.cos(y), np.sin(y), 0.0],
+                       [-np.sin(y), np.cos(y), 0.0],
+                       [       0.0,       0.0, 1.0]])
 
-        R = Rz.dot(Ry).dot(Rz)
+        R = Rz.dot(Ry).dot(Rx)
 
         # 3D-matrix from height of antenna
-        offset = np.array([[0],
-                           [0],
+        offset = np.array([[0.0],
+                           [0.0],
                            [ANTENNA_HEIGHT]])
 
         rotated = R.dot(offset)
         #print r/np.pi*180, p/np.pi*180
         #print rotated
 
-        corrected_x = utm_x - rotated[0]
-        corrected_y = utm_y - rotated[1]
-        corrected_z = utm_z - rotated[2]
+        corrected_x = float(utm_x - rotated[0])
+        corrected_y = float(utm_y - rotated[1])
+        corrected_z = float(utm_z - rotated[2])
 
         corrected_q = quaternion_from_euler(r, p, y)
 
@@ -105,7 +105,8 @@ class slope_correction():
         self.odom.pose.pose.orientation.w = corrected_q[3]
         self.pub_odom.publish(self.odom)
 
-        print "roll:", r/np.pi*180, "pitch", p/np.pi*180, "yaw", y/np.pi*180
+        print rotated
+        print "roll:", r/np.pi*180.0, "pitch", p/np.pi*180.0, "yaw", y/np.pi*180.0
         print "utm_x", utm_x, "utm_y", utm_y
         print "corrected_x", corrected_x, "corrected_y", corrected_y, "\n"
 
