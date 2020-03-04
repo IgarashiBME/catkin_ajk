@@ -34,9 +34,9 @@ def shutdown():
     rospy.loginfo("imu_data_sub_node was terminated")
 
 def listener():
-    rospy.init_node('imu_data_sub_node')
+    rospy.init_node('bno_imu_data_sub_node')
     rospy.on_shutdown(shutdown)
-    rospy.Subscriber('/mad_imu/data', Imu, imu) # ROS callback function
+    rospy.Subscriber('/imu/data', Imu, imu) # ROS callback function
     rospy.Subscriber('/gnss_imu', Odometry, gnss_imu) # ROS callback function
     rospy.spin()
 
