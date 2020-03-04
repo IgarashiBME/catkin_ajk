@@ -69,7 +69,7 @@ class look_ahead():
         self.y = 0
         self.q = np.empty(4)
         self.yaw = np.pi/2
-        self.pre_steering_ang = 0
+        self.last_steering_ang = 0
 
         # mav_modes
         self.mission_start = False
@@ -181,7 +181,6 @@ class look_ahead():
         KP = 0
         KI = 0
         KD = 0
-        d = 0
         look_ahead_dist = 0
         i_control_dist = 0
         i_limit = 0
@@ -230,7 +229,10 @@ class look_ahead():
             # get the parameters of look-ahead control
             KP = rospy.get_param("/mavlink_ajk/Kp")
             KI = rospy.get_param("/mavlink_ajk/Ki")
+            KD = rospy.get_param("/mavlink_ajk/Kd")
             look_ahead_dist = rospy.get_param("/mavlink_ajk/look_ahead")
+            i_control_dist = rospy.get_param("/mavlink_ajk/i_control_dist")
+            i_limit = rospy.get_param("/mavlink_ajk/i_limit")
 
             # waypoint with xy coordinate origin adjust
             wp_x_adj = self.waypoint_x[self.seq] - self.waypoint_x[self.seq-1]
@@ -284,11 +286,20 @@ class look_ahead():
 
             # calculate the steering_value
             p = KP *steering_ang
+
             i = KI *own_y_tf
-            
+            #if i > i_limit:
+            #    i = i_limit
+            #elif i < -i_limit:
+            #    i = -i_limit
+
+            d = KD *(self.last_steering_ang - steering_ang)
+            self.last_steering_ang = steering_ang
+
             pid_value = p
-            if abs(own_y_tf) < I_CONTROL_DIST:
+            if abs(own_y_tf) < i_control_dist:
                 pid_value = p - i
+            pid_value = pid_value - d
 
             ajk_steering = STEERING_NEUTRAL +LR_OPTIMUM *pid_value
             if translation < 0:
@@ -363,6 +374,9 @@ class look_ahead():
                     pass
 
             if self.seq >= len(self.waypoint_x):
+                self.auto_log.waypoint_seq = 65535
+                self.auto_log_pub.publish(self.auto_log)
+
                 self.ajk_value.stamp = rospy.Time.now()
                 self.ajk_value.translation = TRANSLATION_NEUTRAL
                 self.ajk_value.steering = STEERING_NEUTRAL
@@ -374,8 +388,7 @@ class look_ahead():
                 self.seq = 1
                 print "mission_end"
                 time.sleep(5)
-            #print
-            #time.sleep(1/frequency)
+
             rr.sleep()
   
 if __name__ == '__main__':
