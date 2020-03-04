@@ -28,6 +28,7 @@ class fake():
     def loop(self):
         rr = rospy.Rate(10)
         while not rospy.is_shutdown():
+            odom_q = quaternion_from_euler(0.0, 0.0, 90.0/180.0*np.pi)
             odom_q = quaternion_from_euler(0.0, 0.0, 0.0)
             self.odom.header.stamp = rospy.Time.now()
             self.odom.pose.pose.position.x = 1.0
