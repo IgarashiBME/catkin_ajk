@@ -10,8 +10,7 @@ from sensor_msgs.msg import Imu
 from tf.transformations import quaternion_from_euler
 from tf.transformations import euler_from_quaternion
 
-ANTENNA_HEIGHT = 1.025
-# 1.025 m AJK
+ANTENNA_HEIGHT = 0
 
 class slope_correction():
     def __init__(self):
@@ -102,17 +101,17 @@ class slope_correction():
         R = Rz.dot(Ry).dot(Rx)
 
         # 3D-matrix from height of antenna
-        offset = np.array([[0.25],
-                           [0.0],
-                           [-ANTENNA_HEIGHT]])
+        offset = np.array([[0.0],
+                           [-0.25],
+                           [ANTENNA_HEIGHT]])
 
         rotated = R.dot(offset)
         #print r/np.pi*180, p/np.pi*180
         #print rotated
 
-        corrected_x = float(utm_x + rotated[0])
-        corrected_y = float(utm_y + rotated[1])
-        corrected_z = float(utm_z + rotated[2])
+        corrected_x = float(utm_x + rotated[1])
+        corrected_y = float(utm_y - rotated[0])
+        corrected_z = float(utm_z - rotated[2])
 
         if self.first_flag == False:
             self.initial_x = corrected_x
@@ -135,11 +134,11 @@ class slope_correction():
 
         print rotated
         print "roll:", r/np.pi*180.0, "pitch", p/np.pi*180.0, "yaw", y/np.pi*180.0
-        #print "utm_x", utm_x, "utm_y", utm_y
+        print "utm_x", utm_x, "utm_y", utm_y
         print "corrected_x", corrected_x, "corrected_y", corrected_y, "\n"
 
-        #print "diff_x: ", self.initial_x - corrected_x
-        #print "diff_y: ", self.initial_y - corrected_y
+        print "diff_x: ", self.initial_x - corrected_x
+        print "diff_y: ", self.initial_y - corrected_y
         print
 
     def shutdown(self):

@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="slope_correction" type="slope.py" name="slope_correction" output="screen" respawn="true">
+  </node>
+</launch>
